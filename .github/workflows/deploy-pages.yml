@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAGES: "1"
+      NEXT_PUBLIC_BASE_PATH: /Rozadi
+      NEXT_PUBLIC_SITE_URL: https://milanorezaee2.github.io/Rozadi
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Remove server-only routes for static export
+        run: |
+          rm -rf src/app/api
+          rm -f src/middleware.ts
+
+      - name: Export static site
+        run: npm run build
+
+      - name: Add SPA fallback
+        run: cp out/fa/index.html out/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
