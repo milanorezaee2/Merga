@@ -214,7 +214,13 @@ function ItemGrid({
   }
 
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="space-y-4">
+      <p className="rounded-lg border border-border bg-background-secondary/40 px-4 py-3 text-caption text-foreground-secondary">
+        {fa
+          ? "هر الگو و محصولی که ثبت یا ویرایش کنید تا تأیید مدیر در سایت عمومی نمایش داده نمی‌شود."
+          : "Every pattern and product you add or edit stays hidden from the public site until an admin approves it."}
+      </p>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => {
         const image = "image" in item ? item.image : (("colors" in item && item.colors[0]?.image) || "/images/collections/s01.jpg");
         const title = typeof item.title === "object" ? (locale === "fa" ? item.title.fa : item.title.en) : item.title;
@@ -228,6 +234,13 @@ function ItemGrid({
               {item.isNew && (
                 <span className="absolute left-2 top-2">
                   <Badge tone="accent">{fa ? "جدید" : "New"}</Badge>
+                </span>
+              )}
+              {item.status && item.status !== "approved" && (
+                <span className="absolute right-2 top-2">
+                  <Badge tone={item.status === "pending" ? "warning" : "error"}>
+                    {item.status === "pending" ? (fa ? "در انتظار بررسی" : "Pending review") : fa ? "ردشده" : "Rejected"}
+                  </Badge>
                 </span>
               )}
             </div>
@@ -279,7 +292,8 @@ function ItemGrid({
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </div>
   );
 }
 
