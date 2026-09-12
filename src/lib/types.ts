@@ -187,6 +187,21 @@ export interface Portfolio {
   size: "hero" | "tall" | "wide" | "square";
 }
 
+/** One lesson inside a chapter. `isFree` lessons are unlocked for everyone. */
+export interface Lesson {
+  id: ID;
+  title: Localized;
+  durationMin: number;
+  isFree?: boolean;
+}
+
+/** A curriculum chapter. Optional: items without one show no curriculum section. */
+export interface Chapter {
+  id: ID;
+  title: Localized;
+  lessons: Lesson[];
+}
+
 export type EducationType = "course" | "tutorial" | "article" | "path";
 export type Difficulty = "beginner" | "intermediate" | "advanced";
 
@@ -213,6 +228,8 @@ export interface EducationItem {
    * "no price set" — the UI then shows no price rather than inventing one.
    */
   price?: { fa: number; en: number } | null;
+  /** Real curriculum. Optional — the detail page renders the section only when present. */
+  chapters?: Chapter[];
 }
 
 export interface Story {

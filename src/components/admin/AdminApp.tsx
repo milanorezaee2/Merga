@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ArtistModeration } from "@/components/admin/ArtistModeration";
 import { SESSION_FETCH } from "@/lib/http";
 import { cn, href, slugify, t } from "@/lib/utils";
-import type { Artist, ArtistReview, Banner, Category, EducationItem, HeroContent, HomeSectionKey, SeoMeta, SiteContent } from "@/lib/types";
+import type { Artist, ArtistReview, Banner, Category, Chapter, EducationItem, HeroContent, HomeSectionKey, Lesson, SeoMeta, SiteContent } from "@/lib/types";
 import type { Localized } from "@/lib/i18n/types";
 
 type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "requests" | "portfolios" | "education" | "banners" | "seo";
@@ -187,6 +187,7 @@ export function AdminApp() {
                 <div className="space-y-6">
                   <FlagList title="Education" items={data.education} label={(e) => `${e.type.toUpperCase()} · ${t(e.title, "en")}`} flags={["featured", "popular"]} onChange={(education) => update({ education })} viewHref={(e) => href(locale, `/academy/${e.slug}`)} />
                   <EducationPriceEditor items={data.education} onChange={(education) => update({ education })} />
+                  <CurriculumEditor items={data.education} onChange={(education) => update({ education })} />
                 </div>
               )}
               {section === "banners" && <BannersEditor banners={data.banners} onChange={(banners) => update({ banners })} />}
@@ -538,6 +539,108 @@ function EducationPriceEditor({ items, onChange }: { items: EducationItem[]; onC
           );
         })}
       </ul>
+    </Card>
+  );
+}
+
+/* ---------------- Curriculum ---------------- */
+/**
+ * Chapters + lessons for a course. Items with no chapters simply show no curriculum section on
+ * the detail page, so an empty editor is a valid state.
+ */
+function CurriculumEditor({ items, onChange }: { items: EducationItem[]; onChange: (e: EducationItem[]) => void }) {
+  const [selected, setSelected] = useState(items[0]?.id ?? "");
+  const item = items.find((i) => i.id === selected) ?? items[0];
+  const chapters = item?.chapters ?? [];
+
+  if (!item) return null;
+
+  const setChapters = (next: Chapter[]) => onChange(items.map((i) => (i.id === item.id ? { ...i, chapters: next } : i)));
+  const patchChapter = (id: string, p: Partial<Chapter>) => setChapters(chapters.map((c) => (c.id === id ? { ...c, ...p } : c)));
+  const patchLesson = (cid: string, lid: string, p: Partial<Lesson>) =>
+    patchChapter(cid, { lessons: chapters.find((c) => c.id === cid)!.lessons.map((l) => (l.id === lid ? { ...l, ...p } : l)) });
+
+  return (
+    <Card
+      title="Curriculum"
+      desc="Chapters and lessons shown on the course page. Leave empty to hide the section."
+      action={
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setChapters([...chapters, { id: `ch-${Date.now().toString(36)}`, title: { fa: "", en: "" }, lessons: [] }])}
+        >
+          <Plus className="h-4 w-4" />
+          Add chapter
+        </Button>
+      }
+    >
+      <div className="mb-4">
+        <Select value={item.id} onChange={(e) => setSelected(e.target.value)} aria-label="Item">
+          {items.map((i) => (
+            <option key={i.id} value={i.id}>
+              {t(i.title, "en")} ({(i.chapters ?? []).length})
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      {chapters.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">No chapters for this item.</p>
+      ) : (
+        <ul className="space-y-4">
+          {chapters.map((c) => (
+            <li key={c.id} className="rounded-lg border border-border p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Chapter (fa)">
+                  <Input value={c.title.fa} onChange={(e) => patchChapter(c.id, { title: { ...c.title, fa: e.target.value } })} />
+                </Field>
+                <Field label="Chapter (en)">
+                  <Input dir="ltr" value={c.title.en} onChange={(e) => patchChapter(c.id, { title: { ...c.title, en: e.target.value } })} />
+                </Field>
+              </div>
+
+              <ul className="mt-3 space-y-2">
+                {c.lessons.map((l) => (
+                  <li key={l.id} className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_7rem_6rem_2rem]">
+                    <Field label="Lesson (fa)">
+                      <Input value={l.title.fa} onChange={(e) => patchLesson(c.id, l.id, { title: { ...l.title, fa: e.target.value } })} />
+                    </Field>
+                    <Field label="Lesson (en)">
+                      <Input dir="ltr" value={l.title.en} onChange={(e) => patchLesson(c.id, l.id, { title: { ...l.title, en: e.target.value } })} />
+                    </Field>
+                    <Field label="Minutes">
+                      <Input type="number" min={1} dir="ltr" value={l.durationMin} onChange={(e) => patchLesson(c.id, l.id, { durationMin: Number(e.target.value) || 1 })} />
+                    </Field>
+                    <label className="flex items-center gap-2 pb-2.5 text-caption">
+                      <input type="checkbox" checked={Boolean(l.isFree)} onChange={(e) => patchLesson(c.id, l.id, { isFree: e.target.checked })} />
+                      Free
+                    </label>
+                    <IconBtn label="remove lesson" onClick={() => patchChapter(c.id, { lessons: c.lessons.filter((x) => x.id !== l.id) })}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </IconBtn>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-3 flex items-center justify-between">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => patchChapter(c.id, { lessons: [...c.lessons, { id: `ls-${Date.now().toString(36)}`, title: { fa: "", en: "" }, durationMin: 10 }] })}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add lesson
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setChapters(chapters.filter((x) => x.id !== c.id))}>
+                  <Trash2 className="h-4 w-4" />
+                  Remove chapter
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
