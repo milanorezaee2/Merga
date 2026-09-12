@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, ChevronDown, Clock, Layers, Lock, PlayCircle, Signal } from "lucide-react";
+import { CalendarDays, Clock, Layers, Signal } from "lucide-react";
 import { EducationCard } from "@/components/cards/EducationCard";
 import { PatternCard } from "@/components/cards/PatternCard";
 import { ProductCard } from "@/components/cards/ProductCard";
@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Reveal } from "@/components/ui/Reveal";
 import { enrichEducation, enrichPattern, enrichProduct, getSite } from "@/lib/data/queries";
+import { getSession } from "@/lib/auth";
+import { isEnrolled } from "@/lib/data/enrollments";
+import { Curriculum } from "@/components/academy/Curriculum";
 import { dictionaries } from "@/lib/i18n/dictionary";
 import { LOCALES, type Locale } from "@/lib/i18n/types";
 import { faNum, formatDuration, href, t } from "@/lib/utils";
@@ -38,6 +41,9 @@ export default async function EducationDetail({ params }: Props) {
   const e = enrichEducation(site, raw);
   const related = site.education.filter((x) => x.id !== e.id && (x.categoryId === e.categoryId || x.authorId === e.authorId)).slice(0, 3).map((x) => enrichEducation(site, x));
   const paragraphs = t(e.body, locale).split(/\n\n+/);
+  /** Real entitlement: read from the signed-in session, not from client state. */
+  const session = await getSession();
+  const enrolled = session ? await isEnrolled(session.id, e.id) : false;
 
   const breadcrumb = [
     { label: d.nav.home, href: href(locale, "/") },
@@ -107,41 +113,13 @@ export default async function EducationDetail({ params }: Props) {
       {e.chapters && e.chapters.length > 0 && (
         <section className="container-x section-y">
           <SectionHeader eyebrow={d.nav.education} title={d.common.curriculum} />
-          <div className="mt-8 max-w-3xl divide-y divide-border rounded-xl border border-border">
-            {e.chapters.map((c, ci) => {
-              const mins = c.lessons.reduce((acc, l) => acc + l.durationMin, 0);
-              return (
-                <details key={c.id} className="group px-5 py-4" open={ci === 0}>
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
-                    <span className="flex items-center gap-3">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background-secondary text-caption tabular">
-                        {locale === "fa" ? faNum(ci + 1) : ci + 1}
-                      </span>
-                      <span className="font-medium">{t(c.title, locale)}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-3 text-caption text-muted tabular">
-                      {locale === "fa" ? faNum(c.lessons.length) : c.lessons.length} {d.common.lessons} · {formatDuration(mins, locale, d.common)}
-                      <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-                    </span>
-                  </summary>
-                  <ul className="mt-4 space-y-1.5 ps-10">
-                    {c.lessons.map((l) => (
-                      <li key={l.id} className="flex items-center justify-between gap-4 rounded-md px-3 py-2 text-sm hover:bg-background-secondary">
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          {l.isFree ? <PlayCircle className="h-4 w-4 shrink-0 text-accent" /> : <Lock className="h-4 w-4 shrink-0 text-muted" />}
-                          <span className="truncate">{t(l.title, locale)}</span>
-                        </span>
-                        <span className="flex shrink-0 items-center gap-2 text-caption text-muted tabular">
-                          {l.isFree && <span className="rounded-sm bg-accent-soft px-1.5 py-0.5 text-accent">{d.common.preview}</span>}
-                          {formatDuration(l.durationMin, locale, d.common)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              );
-            })}
-          </div>
+          <Curriculum
+            chapters={e.chapters}
+            itemId={e.id}
+            itemIsFree={e.price === null}
+            initiallyEnrolled={enrolled}
+            locale={locale}
+          />
         </section>
       )}
 

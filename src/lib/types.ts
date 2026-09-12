@@ -193,6 +193,8 @@ export interface Lesson {
   title: Localized;
   durationMin: number;
   isFree?: boolean;
+  /** Media source for the player. Absent = no media attached yet (the player says so). */
+  videoUrl?: string;
 }
 
 /** A curriculum chapter. Optional: items without one show no curriculum section. */
