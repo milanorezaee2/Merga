@@ -602,7 +602,8 @@ function CurriculumEditor({ items, onChange }: { items: EducationItem[]; onChang
 
               <ul className="mt-3 space-y-2">
                 {c.lessons.map((l) => (
-                  <li key={l.id} className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_7rem_6rem_2rem]">
+                  <li key={l.id} className="space-y-2 rounded-md border border-border/60 p-2">
+                  <div className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_7rem_6rem_2rem]">
                     <Field label="Lesson (fa)">
                       <Input value={l.title.fa} onChange={(e) => patchLesson(c.id, l.id, { title: { ...l.title, fa: e.target.value } })} />
                     </Field>
@@ -619,6 +620,15 @@ function CurriculumEditor({ items, onChange }: { items: EducationItem[]; onChang
                     <IconBtn label="remove lesson" onClick={() => patchChapter(c.id, { lessons: c.lessons.filter((x) => x.id !== l.id) })}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </IconBtn>
+                  </div>
+                  <Field label="Media URL" hint="mp4/webm, or a link from your CDN. Empty = the player reports no media attached.">
+                    <Input
+                      dir="ltr"
+                      value={l.videoUrl ?? ""}
+                      placeholder="https://cdn.example.com/lesson-01.mp4"
+                      onChange={(e) => patchLesson(c.id, l.id, { videoUrl: e.target.value.trim() || undefined })}
+                    />
+                  </Field>
                   </li>
                 ))}
               </ul>
