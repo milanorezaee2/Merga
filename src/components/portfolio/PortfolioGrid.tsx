@@ -55,10 +55,10 @@ export function PortfolioGrid({ items, categories }: Props) {
                 <div
                   className={cn(
                     "relative w-full overflow-hidden",
-                    i % 5 === 0 ? "aspect-[3/4]" :
-                    i % 5 === 1 ? "aspect-[4/3]" :
-                    i % 5 === 2 ? "aspect-square" :
-                    i % 5 === 3 ? "aspect-[3/4]" : "aspect-[16/10]"
+                    /** Driven by the record's own `size`, so the rhythm survives filtering. */
+                    c.size === "tall" ? "aspect-[3/4]" :
+                    c.size === "wide" ? "aspect-[16/9]" :
+                    c.size === "square" ? "aspect-square" : "aspect-[16/10]"
                   )}
                 >
                   <Image

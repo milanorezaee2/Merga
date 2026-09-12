@@ -39,23 +39,22 @@ interface Props {
   categories: Category[];
 }
 
-/* ─── Deterministic price simulation (no type changes needed) ── */
-function getPrice(item: EducationCardData, locale: "fa" | "en"): { value: number; isFree: boolean } {
-  // Free if it's a very short tutorial (< 30 min) or article
-  if (item.type === "article" || item.durationMin < 30) return { value: 0, isFree: true };
-  // Deterministic price based on item id hash
-  const hash = item.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  if (locale === "fa") {
-    const base = [490_000, 690_000, 980_000, 1_200_000, 1_490_000];
-    return { value: base[hash % base.length], isFree: false };
-  } else {
-    const base = [29, 49, 69, 89, 119];
-    return { value: base[hash % base.length], isFree: false };
-  }
+/**
+ * Price comes from the record: `{ fa, en }` is a paid item, `null` is explicitly free, and a
+ * missing field means "no price set" — in that case nothing is rendered rather than a number
+ * invented from the item id.
+ */
+function getPrice(item: EducationCardData, locale: "fa" | "en"): { value: number; isFree: boolean; unset: boolean } {
+  const p = item.price;
+  if (p === undefined) return { value: 0, isFree: false, unset: true };
+  if (p === null) return { value: 0, isFree: true, unset: false };
+  const value = p[locale] ?? 0;
+  return { value, isFree: value === 0, unset: false };
 }
 
 function formatItemPrice(item: EducationCardData, locale: "fa" | "en"): string {
-  const { value, isFree } = getPrice(item, locale);
+  const { value, isFree, unset } = getPrice(item, locale);
+  if (unset) return "";
   if (isFree) return locale === "fa" ? "رایگان" : "Free";
   if (locale === "fa") return `${faNum(value.toLocaleString("en-US"))} تومان`;
   return `$${value}`;
@@ -259,12 +258,6 @@ function CourseCard({ item, onEnroll }: { item: EducationCardData; onEnroll: (it
     article: isFA ? "مقاله" : "Article",
   };
 
-  // Deterministic star rating
-  const ratingHash = item.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const ratingDecimal = (ratingHash % 9) + 1;
-  const ratingStr = `4.${ratingDecimal}`;
-  const reviewCount = 20 + (ratingHash % 80);
-
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:shadow-medium">
       {/* Thumbnail */}
@@ -336,14 +329,7 @@ function CourseCard({ item, onEnroll }: { item: EducationCardData; onEnroll: (it
           </span>
         </div>
 
-        {/* Stars */}
-        <div className="flex items-center gap-1 text-caption mb-4">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <Star key={s} className={cn("h-3.5 w-3.5", s <= 4 ? "fill-warning text-warning" : "fill-muted/30 text-muted")} />
-          ))}
-          <span className="text-foreground-secondary ms-1.5 tabular">{isFA ? faNum(ratingStr) : ratingStr}</span>
-          <span className="text-muted ms-0.5">({isFA ? faNum(reviewCount) : reviewCount})</span>
-        </div>
+        {/* No star rating: the data model has none, so nothing is invented here. */}
 
         <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
           {/* Instructor */}
@@ -482,8 +468,8 @@ export function AcademyClient({ items, categories }: Props) {
     { key: "all", label: isFA ? "همه" : "All", icon: BookOpen },
     { key: "course", label: isFA ? "دوره‌ها" : "Courses", icon: Video },
     { key: "tutorial", label: isFA ? "آموزش‌ها" : "Tutorials", icon: Play },
-    { key: "workshop", label: isFA ? "ورکشاپ" : "Workshops", icon: Calendar },
-    { key: "webinar", label: isFA ? "وبینار" : "Webinars", icon: Globe },
+    { key: "workshop", label: isFA ? "مسیرهای یادگیری" : "Learning paths", icon: Calendar },
+    { key: "webinar", label: isFA ? "مقاله‌ها" : "Articles", icon: Globe },
   ];
 
   // Tab → type mapping
@@ -517,7 +503,7 @@ export function AcademyClient({ items, categories }: Props) {
 
   // Stats
   const totalCourses = items.filter((i) => i.type === "course").length;
-  const totalStudents = items.reduce((acc, i) => acc + i.lessons * 12, 0);
+  const totalLessons = items.reduce((acc, i) => acc + i.lessons, 0);
   const totalInstructors = new Set(items.map((i) => i.authorId)).size;
   const n = (v: number) => (isFA ? faNum(v) : String(v));
 
@@ -631,9 +617,9 @@ export function AcademyClient({ items, categories }: Props) {
       <div className="container-x py-8">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard icon={BookOpen} value={n(totalCourses)} label={isFA ? "دوره آموزشی" : "Courses"} />
-          <StatCard icon={Users} value={`${n(totalStudents)}+`} label={isFA ? "دانشجو" : "Students"} />
+          <StatCard icon={Users} value={n(totalLessons)} label={isFA ? "درس و آموزش" : "Lessons"} />
           <StatCard icon={Award} value={n(totalInstructors)} label={isFA ? "مدرس حرفه‌ای" : "Instructors"} />
-          <StatCard icon={Star} value={isFA ? "۴.۸" : "4.8"} label={isFA ? "میانگین امتیاز" : "Avg. rating"} />
+          <StatCard icon={Star} value={n(items.filter((i) => i.popular).length)} label={isFA ? "محتوای پرطرفدار" : "Popular items"} />
         </div>
       </div>
 
@@ -666,10 +652,10 @@ export function AcademyClient({ items, categories }: Props) {
           <div className="container-x py-14">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-h3 text-foreground">
-                {isFA ? "ورکشاپ‌ها، وبینارها و مسیرهای یادگیری" : "Workshops, Webinars & Learning Paths"}
+                {isFA ? "مسیرهای یادگیری و مقاله‌ها" : "Learning Paths & Articles"}
               </h2>
               <span className="text-caption text-muted tabular">
-                {n(eventItems.length)} {isFA ? "رویداد" : "events"}
+                {n(eventItems.length)} {isFA ? "مورد" : "items"}
               </span>
             </div>
             <div className="flex flex-col gap-4">

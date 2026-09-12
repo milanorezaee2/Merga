@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/ui/PageHero";
 import { FavoritesView } from "@/components/profile/FavoritesView";
-import { enrichPattern, enrichProduct, getSite } from "@/lib/data/queries";
+import { enrichEducation, enrichPattern, enrichProduct, getSite } from "@/lib/data/queries";
 import { dictionaries } from "@/lib/i18n/dictionary";
 import type { Locale } from "@/lib/i18n/types";
 
@@ -16,7 +16,7 @@ export default async function FavoritesPage({ params }: { params: Promise<{ loca
   return (
     <>
       <PageHero eyebrow={d.nav.account} title={d.common.favorite} />
-      <div className="container-x pb-20"><FavoritesView patterns={site.patterns.map((p) => enrichPattern(site, p))} products={site.products.map((p) => enrichProduct(site, p))} /></div>
+      <div className="container-x pb-20"><FavoritesView patterns={site.patterns.map((p) => enrichPattern(site, p))} products={site.products.map((p) => enrichProduct(site, p))} education={site.education.map((e) => enrichEducation(site, e))} /></div>
     </>
   );
 }

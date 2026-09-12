@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, UserPlus, Check } from "lucide-react";
-import { useState } from "react";
-import { useLocale } from "@/components/providers/AppProviders";
+import { ArrowUpRight, UserPlus, Check, Star } from "lucide-react";
+import { useFollows, useLocale } from "@/components/providers/AppProviders";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
 import { cn, formatNumber, href, t } from "@/lib/utils";
 import type { Artist, Pattern } from "@/lib/types";
@@ -17,7 +16,8 @@ export interface ArtistCardData extends Artist {
 
 export function ArtistCard({ artist, variant = "default", className }: { artist: ArtistCardData; variant?: "default" | "large"; className?: string }) {
   const { locale, dict } = useLocale();
-  const [following, setFollowing] = useState(false);
+  const follows = useFollows();
+  const following = follows.has(artist.id);
   const url = href(locale, `/artists/${artist.slug}`);
 
   return (
@@ -48,7 +48,7 @@ export function ArtistCard({ artist, variant = "default", className }: { artist:
           <button
             type="button"
             aria-pressed={following}
-            onClick={() => setFollowing((f) => !f)}
+            onClick={() => follows.toggle(artist.id)}
             className={cn("mb-1 inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-caption font-medium transition-all duration-200 active:scale-95", following ? "border-foreground bg-foreground text-background" : "border-border text-foreground hover:border-foreground")}
           >
             {following ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
@@ -57,12 +57,20 @@ export function ArtistCard({ artist, variant = "default", className }: { artist:
         </div>
         <Link href={url} className="mt-3 block text-h4 font-semibold text-foreground hover:text-accent transition-colors">{t(artist.name, locale)}</Link>
         <p className="text-caption text-accent">{t(artist.profession, locale)}</p>
+        {artist.rating > 0 && (
+          <p className="mt-1.5 inline-flex items-center gap-1.5 text-caption text-foreground-secondary tabular">
+            <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+            {formatNumber(artist.rating, locale)}
+            <span className="text-muted">·</span>
+            {formatNumber(artist.reviewsCount, locale)} {dict.common.reviews}
+          </p>
+        )}
         <p className="mt-2.5 line-clamp-2 text-body-sm text-foreground-secondary">{t(artist.bio, locale)}</p>
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3.5 text-caption text-foreground-secondary">
           <div className="flex gap-4 tabular">
             <span><strong className="font-semibold text-foreground">{artist.counts.patterns}</strong> {dict.common.patterns}</span>
             <span><strong className="font-semibold text-foreground">{artist.counts.projects}</strong> {dict.common.projects}</span>
-            <span><strong className="font-semibold text-foreground">{formatNumber(artist.followers, locale)}</strong> {dict.common.followers}</span>
+            <span><strong className="font-semibold text-foreground">{formatNumber(artist.followers + (following ? 1 : 0), locale)}</strong> {dict.common.followers}</span>
           </div>
           <Link href={url} aria-label={dict.common.viewProfile} className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-foreground">
             <ArrowUpRight className="h-4 w-4 rtl-flip arrow-shift" />

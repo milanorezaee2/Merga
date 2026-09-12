@@ -20,6 +20,17 @@ export interface Space {
   order: number;
 }
 
+/** A review left about an artist's work. Optional: profiles without reviews show an empty state. */
+export interface ArtistReview {
+  id: ID;
+  /** Display name of the reviewer (customer or studio). */
+  author: string;
+  text: Localized;
+  rating: number;
+  /** ISO date, e.g. "2026-06-14" — rendered as-is, never derived from the row index. */
+  date: string;
+}
+
 /**
  * Moderation state of an artist profile.
  *  - "pending"  → self-registered, waiting for an admin decision; hidden from every public page
@@ -45,6 +56,8 @@ export interface Artist {
   followers: number;
   rating: number;
   reviewsCount: number;
+  /** Real reviews. Optional — a profile without any renders an empty state instead of filler. */
+  reviews?: ArtistReview[];
   /** Account that owns this profile — set when the artist registers themselves. */
   userId?: ID | null;
   /** Missing = legacy/seed record, treated as "approved" (see `artistStatus()`). */
@@ -195,6 +208,11 @@ export interface EducationItem {
   featured: boolean;
   popular: boolean;
   publishedAt: string;
+  /**
+   * Explicit price: `fa` in Toman, `en` in USD. `null` means free, and a missing field means
+   * "no price set" — the UI then shows no price rather than inventing one.
+   */
+  price?: { fa: number; en: number } | null;
 }
 
 export interface Story {

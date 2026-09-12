@@ -82,6 +82,26 @@ export function useFavorites() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Follows                                                               */
+/* ------------------------------------------------------------------ */
+/**
+ * Followed artists. Persisted in localStorage like favorites — this is a *local* follow: it is not
+ * written to the server, so it never changes the public follower count and does not survive a
+ * device change. A real follow graph needs an API + a per-artist counter.
+ */
+interface FollowCtx {
+  ids: Set<string>;
+  toggle: (id: string) => void;
+  has: (id: string) => boolean;
+}
+const FollowContext = createContext<FollowCtx | null>(null);
+export function useFollows() {
+  const ctx = useContext(FollowContext);
+  if (!ctx) throw new Error("useFollows outside provider");
+  return ctx;
+}
+
+/* ------------------------------------------------------------------ */
 /* Auth                                                                  */
 /* ------------------------------------------------------------------ */
 export interface User {
@@ -217,6 +237,17 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
     };
   }, [favArr, setFavArr]);
 
+  /* follows (local only — see FollowCtx) */
+  const [followArr, setFollowArr] = useLocalState<string[]>("ra-follows", []);
+  const followValue = useMemo<FollowCtx>(() => {
+    const set = new Set(followArr);
+    return {
+      ids: set,
+      has: (id) => set.has(id),
+      toggle: (id) => setFollowArr((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id])),
+    };
+  }, [followArr, setFollowArr]);
+
   /* auth — fully server-side session via HttpOnly cookie */
   const [serverUser, setServerUser] = useState<User | null | undefined>(undefined);
   /**
@@ -318,11 +349,13 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
     <LocaleContext.Provider value={localeValue}>
       <ThemeContext.Provider value={{ theme, toggle: toggleTheme }}>
         <AuthContext.Provider value={authValue}>
-          <FavContext.Provider value={favValue}>
-            <CartContext.Provider value={cartValue}>
-              <SearchContext.Provider value={searchValue}>{children}</SearchContext.Provider>
-            </CartContext.Provider>
-          </FavContext.Provider>
+          <FollowContext.Provider value={followValue}>
+            <FavContext.Provider value={favValue}>
+              <CartContext.Provider value={cartValue}>
+                <SearchContext.Provider value={searchValue}>{children}</SearchContext.Provider>
+              </CartContext.Provider>
+            </FavContext.Provider>
+          </FollowContext.Provider>
         </AuthContext.Provider>
       </ThemeContext.Provider>
     </LocaleContext.Provider>

@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Bookmark, Clock, Layers, Signal } from "lucide-react";
-import { useState } from "react";
-import { useLocale } from "@/components/providers/AppProviders";
+import { useFavorites, useLocale } from "@/components/providers/AppProviders";
 import { Badge } from "@/components/ui/Badge";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
 import { cn, faNum, formatDuration, href, t } from "@/lib/utils";
@@ -17,8 +16,11 @@ export interface EducationCardData extends EducationItem {
 
 export function EducationCard({ item, variant = "default", className, progress }: { item: EducationCardData; variant?: "default" | "large" | "row"; className?: string; progress?: number }) {
   const { locale, dict } = useLocale();
-  const [saved, setSaved] = useState(false);
+  /** Saved into the same localStorage-backed favourites used by patterns and products. */
+  const favorites = useFavorites();
+  const saved = favorites.has(item.id);
   const url = href(locale, `/academy/${item.slug}`);
+  const published = new Date(item.publishedAt).toLocaleDateString(locale === "fa" ? "fa-IR" : "en-GB", { year: "numeric", month: "short" });
   const typeLabel = dict.common[item.type];
   const diff = dict.common[item.difficulty];
   const dur = formatDuration(item.durationMin, locale, dict.common);
@@ -46,7 +48,7 @@ export function EducationCard({ item, variant = "default", className, progress }
             type="button"
             aria-pressed={saved}
             aria-label={dict.common.save}
-            onClick={(e) => { e.preventDefault(); setSaved((s) => !s); }}
+            onClick={(e) => { e.preventDefault(); favorites.toggle(item.id); }}
             className={cn("flex h-8 w-8 items-center justify-center rounded-full glass transition-transform active:scale-90", saved ? "text-accent" : "text-foreground")}
           >
             <Bookmark className={cn("h-3.5 w-3.5", saved && "fill-current")} />
@@ -57,10 +59,12 @@ export function EducationCard({ item, variant = "default", className, progress }
         )}
       </Link>
       <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center gap-2 text-caption text-foreground-secondary">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-foreground-secondary">
           {item.category && <span>{t(item.category.name, locale)}</span>}
           <span className="text-muted">·</span>
           <span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" />{diff}</span>
+          <span className="text-muted">·</span>
+          <time dateTime={item.publishedAt}>{published}</time>
         </div>
         <Link href={url} className={cn("mt-2 block font-semibold text-foreground text-balance hover:text-accent transition-colors", variant === "large" ? "text-h3" : "text-h4")}>{t(item.title, locale)}</Link>
         <p className="mt-2 line-clamp-2 text-body-sm text-foreground-secondary">{t(item.excerpt, locale)}</p>
