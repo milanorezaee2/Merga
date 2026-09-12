@@ -82,6 +82,26 @@ export function useFavorites() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Follows                                                               */
+/* ------------------------------------------------------------------ */
+/**
+ * Followed artists. Persisted in localStorage like favorites — this is a *local* follow: it is not
+ * written to the server, so it never changes the public follower count and does not survive a
+ * device change. A real follow graph needs an API + a per-artist counter.
+ */
+interface FollowCtx {
+  ids: Set<string>;
+  toggle: (id: string) => void;
+  has: (id: string) => boolean;
+}
+const FollowContext = createContext<FollowCtx | null>(null);
+export function useFollows() {
+  const ctx = useContext(FollowContext);
+  if (!ctx) throw new Error("useFollows outside provider");
+  return ctx;
+}
+
+/* ------------------------------------------------------------------ */
 /* Auth                                                                  */
 /* ------------------------------------------------------------------ */
 export interface User {
@@ -96,7 +116,14 @@ interface AuthCtx {
   /** false until the server session has been checked */
   ready: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signup: (name: string, email: string, password: string, role?: "user" | "artist") => Promise<{ ok: boolean; error?: string }>;
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    role?: "user" | "artist",
+    /** Artist-only extras captured by /creators/join — ignored for plain customers. */
+    extra?: { profession?: string; phone?: string },
+  ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 }
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -210,6 +237,17 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
     };
   }, [favArr, setFavArr]);
 
+  /* follows (local only — see FollowCtx) */
+  const [followArr, setFollowArr] = useLocalState<string[]>("ra-follows", []);
+  const followValue = useMemo<FollowCtx>(() => {
+    const set = new Set(followArr);
+    return {
+      ids: set,
+      has: (id) => set.has(id),
+      toggle: (id) => setFollowArr((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id])),
+    };
+  }, [followArr, setFollowArr]);
+
   /* auth — fully server-side session via HttpOnly cookie */
   const [serverUser, setServerUser] = useState<User | null | undefined>(undefined);
   /**
@@ -262,14 +300,14 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
           return { ok: false, error: "network" };
         }
       },
-      signup: async (name, email, password, role = "user") => {
+      signup: async (name, email, password, role = "user", extra) => {
         if (!name || !email.includes("@") || password.length < 6) return { ok: false, error: "invalid" };
         try {
           const r = await fetch("/api/auth/signup", {
             ...SESSION_FETCH,
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ name, email, password, role }),
+            body: JSON.stringify({ name, email, password, role, ...(extra ?? {}) }),
           });
           const d = (await r.json()) as { ok: boolean; user?: User; error?: string };
           if (r.ok && d.ok && d.user) {
@@ -311,11 +349,13 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
     <LocaleContext.Provider value={localeValue}>
       <ThemeContext.Provider value={{ theme, toggle: toggleTheme }}>
         <AuthContext.Provider value={authValue}>
-          <FavContext.Provider value={favValue}>
-            <CartContext.Provider value={cartValue}>
-              <SearchContext.Provider value={searchValue}>{children}</SearchContext.Provider>
-            </CartContext.Provider>
-          </FavContext.Provider>
+          <FollowContext.Provider value={followValue}>
+            <FavContext.Provider value={favValue}>
+              <CartContext.Provider value={cartValue}>
+                <SearchContext.Provider value={searchValue}>{children}</SearchContext.Provider>
+              </CartContext.Provider>
+            </FavContext.Provider>
+          </FollowContext.Provider>
         </AuthContext.Provider>
       </ThemeContext.Provider>
     </LocaleContext.Provider>

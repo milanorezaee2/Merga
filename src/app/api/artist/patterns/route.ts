@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getContent, saveContent } from "@/lib/data/store";
 import { withNoStore } from "@/lib/http";
+import { submissionStamp } from "@/lib/data/moderation";
 import type { Pattern, Product } from "@/lib/types";
 import crypto from "crypto";
 
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
       bestSeller: false,
       isNew: true,
       order: content.products.length + 1,
+      // Artist submissions wait for admin review before they appear on the public site.
+      ...submissionStamp(),
     };
     await saveContent({ ...content, products: [...content.products, product] });
     return NextResponse.json({ ok: true, product }, withNoStore());
@@ -117,6 +120,8 @@ export async function POST(req: Request) {
     isNew: true,
     createdAt: new Date().toISOString(),
     likes: 0,
+    // Artist submissions wait for admin review before they appear on the public site.
+    ...submissionStamp(),
   };
   await saveContent({ ...content, patterns: [...content.patterns, pattern] });
   return NextResponse.json({ ok: true, pattern }, withNoStore());
@@ -138,7 +143,19 @@ export async function PUT(req: Request) {
     if (session.role !== "admin" && content.products[idx].artistId !== session.artistId) {
       return unauthorized();
     }
-    const updated: Product = { ...content.products[idx], ...body } as Product;
+    const edits: Record<string, unknown> = { ...body };
+    // Never let a submitter set their own moderation/promotion flags; an edit needs a fresh review.
+    delete edits.status;
+    delete edits.featured;
+    delete edits.bestSeller;
+    delete edits.artistId;
+    const updated: Product = {
+      ...content.products[idx],
+      ...edits,
+      ...(session.role === "admin" ? {} : submissionStamp()),
+      id: content.products[idx].id,
+      sku: content.products[idx].sku,
+    } as Product;
     const products = content.products.map((p, i) => (i === idx ? updated : p));
     await saveContent({ ...content, products });
     return NextResponse.json({ ok: true, product: updated }, withNoStore());
@@ -149,7 +166,19 @@ export async function PUT(req: Request) {
   if (session.role !== "admin" && content.patterns[idx].artistId !== session.artistId) {
     return unauthorized();
   }
-  const updated: Pattern = { ...content.patterns[idx], ...body } as Pattern;
+  const edits: Record<string, unknown> = { ...body };
+  delete edits.status;
+  delete edits.featured;
+  delete edits.trending;
+  delete edits.bestSeller;
+  delete edits.artistId;
+  const updated: Pattern = {
+    ...content.patterns[idx],
+    ...edits,
+    ...(session.role === "admin" ? {} : submissionStamp()),
+    id: content.patterns[idx].id,
+    sku: content.patterns[idx].sku,
+  } as Pattern;
   const patterns = content.patterns.map((p, i) => (i === idx ? updated : p));
   await saveContent({ ...content, patterns });
   return NextResponse.json({ ok: true, pattern: updated }, withNoStore());

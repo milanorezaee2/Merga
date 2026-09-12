@@ -38,8 +38,25 @@ export function clearFailures(key: string) {
   buckets.delete(key);
 }
 
-/** Best-effort client identity behind a proxy (Netlify/Vercel set x-forwarded-for). */
-export function clientIp(req: Request): string {
+/**
+ * Sliding-window quota for endpoints that are called on success rather than on failure (uploads,
+ * form posts). Returns false once `limit` calls have been made inside the window. Same caveats as
+ * the login throttle: per-instance, in memory, a deterrent rather than a hard guarantee.
+ */
+export function consumeQuota(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  sweep(now);
+  const b = buckets.get(key);
+  if (!b || b.resetAt <= now) {
+    buckets.set(key, { fails: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (b.fails >= limit) return false;
+  b.fails += 1;
+  return true;
+}
+
+/** Best-effort client identity behind a proxy (Netlify/Vercel set x-forwarded-for). */export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
   return (fwd?.split(",")[0] ?? "unknown").trim();
 }

@@ -118,26 +118,29 @@ export default async function AcademyPage({
                   : "Specialist pattern design courses, live workshops and professional webinars — from foundations to international publishing."}
               </p>
 
-              {/* Stats row */}
+              {/**
+                * Real, derivable numbers only. This row used to claim "۲,۴۰۰+ دانشجو" and a
+                * "۴.۸⭐" average rating — neither exists anywhere in the data.
+                */}
               <div
                 className="anim-fade-up mt-8 flex flex-wrap gap-8 text-caption text-white/60 tabular"
                 style={{ animationDelay: "160ms" }}
               >
                 <span>
-                  <strong className="block font-display text-h3 text-white">{n(courses.length)}+</strong>
+                  <strong className="block font-display text-h3 text-white">{n(courses.length)}</strong>
                   {isFA ? "دوره" : "Courses"}
                 </span>
                 <span>
                   <strong className="block font-display text-h3 text-white">
-                    {isFA ? "۲,۴۰۰+" : "2,400+"}
+                    {n(all.reduce((acc, i) => acc + i.lessons, 0))}
                   </strong>
-                  {isFA ? "دانشجو" : "Students"}
+                  {isFA ? "درس و آموزش" : "Lessons"}
                 </span>
                 <span>
                   <strong className="block font-display text-h3 text-white">
-                    {isFA ? "۴.۸" : "4.8"}⭐
+                    {n(new Set(all.map((i) => i.authorId)).size)}
                   </strong>
-                  {isFA ? "امتیاز" : "Rating"}
+                  {isFA ? "مدرس" : "Instructors"}
                 </span>
               </div>
 

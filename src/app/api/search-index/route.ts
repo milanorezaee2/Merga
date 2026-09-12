@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getContent } from "@/lib/data/store";
+import { getSite } from "@/lib/data/queries";
 
 /**
  * Public search index — served as a standalone endpoint so the full content listing no longer
@@ -12,7 +12,7 @@ import { getContent } from "@/lib/data/store";
 export const revalidate = 300;
 
 export async function GET() {
-  const site = await getContent();
+  const site = await getSite();
   const body = {
     patterns: site.patterns.map(({ slug, title, image, sku }) => ({ slug, title, image, sku })),
     products: site.products.map(({ slug, title, sku, colors }) => ({ slug, title, sku, image: colors[0]?.image ?? "" })),

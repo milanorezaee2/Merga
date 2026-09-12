@@ -3,15 +3,29 @@
 import Image from "next/image";
 import { Check, Globe, MapPin, Star, UserPlus, Camera, Share2 } from "lucide-react";
 import { useState } from "react";
-import { useLocale } from "@/components/providers/AppProviders";
+import { useFollows, useLocale } from "@/components/providers/AppProviders";
 import { Button } from "@/components/ui/Button";
 import { cn, faNum, formatNumber, t } from "@/lib/utils";
 import type { Artist } from "@/lib/types";
 
 export function ProfileHeader({ artist, counts, children }: { artist: Artist; counts: { patterns: number; products: number; projects: number }; children?: React.ReactNode }) {
   const { locale, dict } = useLocale();
-  const [following, setFollowing] = useState(false);
+  const follows = useFollows();
+  const following = follows.has(artist.id);
+  /** "link copied" feedback — the fallback for browsers without the Web Share API. */
+  const [copied, setCopied] = useState(false);
   const n = (v: number) => (locale === "fa" ? faNum(v) : String(v));
+
+  const share = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ url }).catch(() => undefined);
+      return;
+    }
+    await navigator.clipboard?.writeText(url).catch(() => undefined);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <header className="relative">
@@ -41,8 +55,16 @@ export function ProfileHeader({ artist, counts, children }: { artist: Artist; co
           <div className="flex items-center gap-2 pb-1">
             {artist.social.instagram && <a href={`https://instagram.com/${artist.social.instagram}`} target="_blank" rel="noreferrer" aria-label="Instagram" className="flex h-10 w-10 items-center justify-center rounded-full border border-border hover:border-foreground"><Camera className="h-4 w-4" /></a>}
             {artist.social.website && <a href={`https://${artist.social.website}`} target="_blank" rel="noreferrer" aria-label="Website" className="flex h-10 w-10 items-center justify-center rounded-full border border-border hover:border-foreground"><Globe className="h-4 w-4" /></a>}
-            <button type="button" aria-label="Share" onClick={() => navigator.share?.({ url: window.location.href }).catch(() => {})} className="flex h-10 w-10 items-center justify-center rounded-full border border-border hover:border-foreground"><Share2 className="h-4 w-4" /></button>
-            <Button variant={following ? "outline" : "primary"} onClick={() => setFollowing((f) => !f)} aria-pressed={following} className={cn("min-w-32")}>
+            <button
+              type="button"
+              aria-label={copied ? (locale === "fa" ? "لینک کپی شد" : "Link copied") : locale === "fa" ? "اشتراک‌گذاری" : "Share"}
+              onClick={() => void share()}
+              className={cn("flex h-10 items-center gap-1.5 rounded-full border px-3 text-caption transition-colors hover:border-foreground", copied ? "border-accent text-accent" : "border-border")}
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+              {copied && (locale === "fa" ? "کپی شد" : "Copied")}
+            </button>
+            <Button variant={following ? "outline" : "primary"} onClick={() => follows.toggle(artist.id)} aria-pressed={following} className={cn("min-w-32")}>
               {following ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
               {following ? dict.common.following : dict.common.follow}
             </Button>
@@ -52,7 +74,7 @@ export function ProfileHeader({ artist, counts, children }: { artist: Artist; co
         <div className="mt-8 grid gap-8 lg:grid-cols-12">
           <p className="prose-ra lg:col-span-8">{t(artist.bio, locale)}</p>
           <dl className="grid grid-cols-4 gap-4 lg:col-span-4">
-            {[[counts.patterns, dict.common.patterns], [counts.products, dict.common.products], [counts.projects, dict.common.projects], [formatNumber(artist.followers, locale), dict.common.followers]].map(([v, l]) => (
+            {[[counts.patterns, dict.common.patterns], [counts.products, dict.common.products], [counts.projects, dict.common.projects], [formatNumber(artist.followers + (following ? 1 : 0), locale), dict.common.followers]].map(([v, l]) => (
               <div key={String(l)} className="rounded-lg border border-border p-3 text-center">
                 <dd className="font-display text-h3 tabular">{typeof v === "number" ? n(v) : v}</dd>
                 <dt className="text-[11px] text-foreground-secondary">{l}</dt>

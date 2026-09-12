@@ -19,7 +19,16 @@ export default async function ArtistsPage({ params }: { params: Promise<{ locale
   const d = dictionaries[locale];
   const artists = site.artists.map((a) => {
     const s = artistStats(site, a.id);
-    return { ...a, featuredPattern: s.patterns[0] ?? null, portfolioPreview: [] as string[], counts: { patterns: s.patterns.length, projects: 0 } };
+    /** Real work: realised project covers first, then the artist's own pattern art. */
+    const portfolioPreview = [...s.portfolios.map((p) => p.cover), ...s.patterns.map((p) => p.image)]
+      .filter(Boolean)
+      .slice(0, 3);
+    return {
+      ...a,
+      featuredPattern: s.patterns[0] ?? null,
+      portfolioPreview,
+      counts: { patterns: s.patterns.length, projects: s.portfolios.length },
+    };
   });
 
   const heroImage = site.artists[0]?.cover ?? site.hero.image;

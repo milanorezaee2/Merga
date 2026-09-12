@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getContent } from "@/lib/data/store";
+import { getSite } from "@/lib/data/queries";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n/types";
 
 /** Static route segments of the storefront (locale-prefixed). Admin/checkout/account are excluded. */
@@ -41,7 +41,7 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").r
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const site = await getContent();
+  const site = await getSite();
   const url = (l: Locale, path: string) => `${SITE_URL}/${l}${path ? `/${path}` : ""}`;
 
   const entries: MetadataRoute.Sitemap = [];

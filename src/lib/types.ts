@@ -20,6 +20,31 @@ export interface Space {
   order: number;
 }
 
+/** A review left about an artist's work. Optional: profiles without reviews show an empty state. */
+export interface ArtistReview {
+  id: ID;
+  /** Display name of the reviewer (customer or studio). */
+  author: string;
+  text: Localized;
+  rating: number;
+  /** ISO date, e.g. "2026-06-14" — rendered as-is, never derived from the row index. */
+  date: string;
+}
+
+/**
+ * Moderation state of an artist profile.
+ *  - "pending"  → self-registered, waiting for an admin decision; hidden from every public page
+ *  - "approved" → live on the site
+ *  - "rejected" → declined by an admin; hidden from every public page
+ *
+ * The field is optional on purpose: content saved before moderation existed has no `status`,
+ * and `artistStatus()` treats a missing value as "approved" so legacy records keep working.
+ */
+/** Approval state for anything an artist submits. Absent means "approved" (atelier-owned content). */
+export type ContentStatus = "pending" | "approved" | "rejected";
+
+export type ArtistStatus = ContentStatus;
+
 export interface Artist {
   id: ID;
   slug: string;
@@ -34,6 +59,18 @@ export interface Artist {
   followers: number;
   rating: number;
   reviewsCount: number;
+  /** Real reviews. Optional — a profile without any renders an empty state instead of filler. */
+  reviews?: ArtistReview[];
+  /** Account that owns this profile — set when the artist registers themselves. */
+  userId?: ID | null;
+  /** Missing = legacy/seed record, treated as "approved" (see `artistStatus()`). */
+  status?: ArtistStatus;
+  /** Contact details captured at signup. Admin-only: never rendered on public pages. */
+  email?: string;
+  phone?: string;
+  joinedAt?: string;
+  /** Admin note about the moderation decision. Admin-only. */
+  reviewNote?: string;
 }
 
 export interface PatternSpec {
@@ -87,6 +124,10 @@ export interface Pattern {
   isNew: boolean;
   createdAt: string;
   likes: number;
+  /** Artist-submitted pattern: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 export interface ColorOption {
@@ -121,6 +162,10 @@ export interface Product {
   bestSeller: boolean;
   isNew: boolean;
   order: number;
+  /** Artist-submitted product: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 export interface PortfolioBlock {
@@ -151,6 +196,27 @@ export interface Portfolio {
   featured: boolean;
   isProject: boolean;
   size: "hero" | "tall" | "wide" | "square";
+  /** Artist-submitted work: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
+}
+
+/** One lesson inside a chapter. `isFree` lessons are unlocked for everyone. */
+export interface Lesson {
+  id: ID;
+  title: Localized;
+  durationMin: number;
+  isFree?: boolean;
+  /** Media source for the player. Absent = no media attached yet (the player says so). */
+  videoUrl?: string;
+}
+
+/** A curriculum chapter. Optional: items without one show no curriculum section. */
+export interface Chapter {
+  id: ID;
+  title: Localized;
+  lessons: Lesson[];
 }
 
 export type EducationType = "course" | "tutorial" | "article" | "path";
@@ -174,6 +240,17 @@ export interface EducationItem {
   featured: boolean;
   popular: boolean;
   publishedAt: string;
+  /**
+   * Explicit price: `fa` in Toman, `en` in USD. `null` means free, and a missing field means
+   * "no price set" — the UI then shows no price rather than inventing one.
+   */
+  price?: { fa: number; en: number } | null;
+  /** Real curriculum. Optional — the detail page renders the section only when present. */
+  chapters?: Chapter[];
+  /** Artist-submitted lesson/course: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 export interface Story {

@@ -9,12 +9,15 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { ErrorState, Skeleton, SuccessState } from "@/components/ui/States";
 import { Badge } from "@/components/ui/Badge";
+import { ArtistModeration } from "@/components/admin/ArtistModeration";
+import { ContentReview } from "@/components/admin/ContentReview";
+import { OrderDesk } from "@/components/admin/OrderDesk";
 import { SESSION_FETCH } from "@/lib/http";
 import { cn, href, slugify, t } from "@/lib/utils";
-import type { Banner, Category, HeroContent, HomeSectionKey, SeoMeta, SiteContent } from "@/lib/types";
+import type { Artist, ArtistReview, Banner, Category, Chapter, EducationItem, HeroContent, HomeSectionKey, Lesson, SeoMeta, SiteContent } from "@/lib/types";
 import type { Localized } from "@/lib/i18n/types";
 
-type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "portfolios" | "education" | "banners" | "seo";
+type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "requests" | "review" | "orders" | "portfolios" | "education" | "banners" | "seo";
 
 const SECTION_LABELS: Record<HomeSectionKey, string> = {
   hero: "Hero", discovery: "Pattern Discovery", trending: "Trending Patterns", bestSellers: "Best Sellers", newPatterns: "New Patterns", artists: "Featured Artists", portfolios: "Featured Portfolios", styles: "Browse by Style", spaces: "Browse by Space", exclusive: "Exclusive Collection", projects: "Featured Projects", education: "Academy", b2b: "B2B", custom: "Custom Production", stories: "Artist Stories", newsletter: "Newsletter",
@@ -121,7 +124,7 @@ export function AdminApp() {
   }
 
   const nav: { id: Section; label: string }[] = [
-    { id: "home", label: "Homepage Sections" }, { id: "hero", label: "Hero" }, { id: "categories", label: "Categories / Styles" }, { id: "patterns", label: "Patterns" }, { id: "products", label: "Site Products" }, { id: "artists", label: "Artists" }, { id: "portfolios", label: "Portfolios" }, { id: "education", label: "Education" }, { id: "banners", label: "Banners" }, { id: "seo", label: "SEO Metadata" },
+    { id: "home", label: "Homepage Sections" }, { id: "hero", label: "Hero" }, { id: "categories", label: "Categories / Styles" }, { id: "patterns", label: "Patterns" }, { id: "products", label: "Site Products" }, { id: "artists", label: "Artists" }, { id: "requests", label: "Artist Requests" }, { id: "review", label: "Content Review" }, { id: "orders", label: "Orders" }, { id: "portfolios", label: "Portfolios" }, { id: "education", label: "Education" }, { id: "banners", label: "Banners" }, { id: "seo", label: "SEO Metadata" },
   ];
 
   return (
@@ -174,9 +177,23 @@ export function AdminApp() {
               {section === "categories" && <CategoriesEditor data={data} update={update} />}
               {section === "patterns" && <FlagList title="Patterns" items={data.patterns} label={(p) => `${p.sku} · ${t(p.title, "en")}`} flags={["featured", "trending", "bestSeller", "isNew"]} onChange={(patterns) => update({ patterns })} viewHref={(p) => href(locale, `/patterns/${p.slug}`)} />}
               {section === "products" && <FlagList title="Products" items={data.products} label={(p) => `${p.sku} · ${t(p.title, "en")}${!p.artistId ? " · SITE" : ""}`} flags={["featured", "bestSeller", "isNew"]} onChange={(products) => update({ products })} viewHref={(p) => href(locale, `/shop/${p.slug}`)} orderable />}
-              {section === "artists" && <FlagList title="Artists" items={data.artists} label={(a) => `${t(a.name, "en")} · ${t(a.profession, "en")}`} flags={["featured"]} onChange={(artists) => update({ artists })} viewHref={(a) => href(locale, `/artists/${a.slug}`)} />}
+              {section === "artists" && (
+                <div className="space-y-6">
+                  <FlagList title="Artists" items={data.artists} label={(a) => `${t(a.name, "en")} · ${t(a.profession, "en")}`} flags={["featured"]} onChange={(artists) => update({ artists })} viewHref={(a) => href(locale, `/artists/${a.slug}`)} />
+                  <ArtistReviewsEditor artists={data.artists} onChange={(artists) => update({ artists })} />
+                </div>
+              )}
+              {section === "requests" && <ArtistModeration locale={locale} />}
+              {section === "review" && <ContentReview locale={locale} />}
+              {section === "orders" && <OrderDesk locale={locale} />}
               {section === "portfolios" && <FlagList title="Portfolios" items={data.portfolios} label={(p) => `${t(p.title, "en")} · ${p.year}`} flags={["featured", "isProject"]} onChange={(portfolios) => update({ portfolios })} viewHref={(p) => href(locale, `/portfolio/${p.slug}`)} />}
-              {section === "education" && <FlagList title="Education" items={data.education} label={(e) => `${e.type.toUpperCase()} · ${t(e.title, "en")}`} flags={["featured", "popular"]} onChange={(education) => update({ education })} viewHref={(e) => href(locale, `/academy/${e.slug}`)} />}
+              {section === "education" && (
+                <div className="space-y-6">
+                  <FlagList title="Education" items={data.education} label={(e) => `${e.type.toUpperCase()} · ${t(e.title, "en")}`} flags={["featured", "popular"]} onChange={(education) => update({ education })} viewHref={(e) => href(locale, `/academy/${e.slug}`)} />
+                  <EducationPriceEditor items={data.education} onChange={(education) => update({ education })} />
+                  <CurriculumEditor items={data.education} onChange={(education) => update({ education })} />
+                </div>
+              )}
               {section === "banners" && <BannersEditor banners={data.banners} onChange={(banners) => update({ banners })} />}
               {section === "seo" && <SeoEditor seo={data.seo} onChange={(seo) => update({ seo })} />}
             </div>
@@ -370,5 +387,274 @@ function LocalizedField({ label, value, onChange, textarea }: { label: string; v
       <Field label={`${label} (fa)`}><C dir="rtl" value={value.fa} onChange={(e: React.ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => onChange({ ...value, fa: e.target.value })} /></Field>
       <Field label={`${label} (en)`}><C value={value.en} onChange={(e: React.ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => onChange({ ...value, en: e.target.value })} /></Field>
     </div>
+  );
+}
+
+/* ---------------- Artist reviews ---------------- */
+/**
+ * Testimonials shown on an artist profile. Stored on the Artist record, so a profile with no
+ * reviews renders an empty state instead of filler text.
+ */
+function ArtistReviewsEditor({ artists, onChange }: { artists: Artist[]; onChange: (a: Artist[]) => void }) {
+  const [selected, setSelected] = useState(artists[0]?.id ?? "");
+  const artist = artists.find((a) => a.id === selected) ?? artists[0];
+  const reviews = artist?.reviews ?? [];
+
+  const setReviews = (next: ArtistReview[]) =>
+    onChange(artists.map((a) => (a.id === artist?.id ? { ...a, reviews: next } : a)));
+
+  if (!artist) return null;
+
+  const patch = (id: string, p: Partial<ArtistReview>) =>
+    setReviews(reviews.map((r) => (r.id === id ? { ...r, ...p } : r)));
+
+  return (
+    <Card
+      title="Artist reviews"
+      desc="Shown on the public profile. Leave an artist empty and the tab shows an empty state."
+      action={
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            setReviews([
+              ...reviews,
+              { id: `rev-${Date.now().toString(36)}`, author: "", text: { fa: "", en: "" }, rating: 5, date: new Date().toISOString().slice(0, 10) },
+            ])
+          }
+        >
+          <Plus className="h-4 w-4" />
+          Add review
+        </Button>
+      }
+    >
+      <div className="mb-4">
+        <Select value={artist.id} onChange={(e) => setSelected(e.target.value)} aria-label="Artist">
+          {artists.map((a) => (
+            <option key={a.id} value={a.id}>
+              {t(a.name, "en")} ({(a.reviews ?? []).length})
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      {reviews.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
+          No reviews yet for this artist.
+        </p>
+      ) : (
+        <ul className="space-y-4">
+          {reviews.map((r) => (
+            <li key={r.id} className="rounded-lg border border-border p-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Reviewer">
+                  <Input value={r.author} onChange={(e) => patch(r.id, { author: e.target.value })} />
+                </Field>
+                <Field label="Rating (1-5)">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={r.rating}
+                    onChange={(e) => patch(r.id, { rating: Math.min(5, Math.max(1, Number(e.target.value) || 1)) })}
+                  />
+                </Field>
+                <Field label="Date">
+                  <Input type="date" value={r.date} onChange={(e) => patch(r.id, { date: e.target.value })} />
+                </Field>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="Text (fa)">
+                  <Textarea rows={2} value={r.text.fa} onChange={(e) => patch(r.id, { text: { ...r.text, fa: e.target.value } })} />
+                </Field>
+                <Field label="Text (en)">
+                  <Textarea rows={2} dir="ltr" value={r.text.en} onChange={(e) => patch(r.id, { text: { ...r.text, en: e.target.value } })} />
+                </Field>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button size="sm" variant="ghost" onClick={() => setReviews(reviews.filter((x) => x.id !== r.id))}>
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/* ---------------- Education price ---------------- */
+/**
+ * Price editor. `null` means free, an absent field means "not set" — the storefront renders
+ * nothing in that case rather than inventing a number.
+ */
+function EducationPriceEditor({ items, onChange }: { items: EducationItem[]; onChange: (e: EducationItem[]) => void }) {
+  const set = (id: string, patch: Partial<EducationItem>) => onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
+  return (
+    <Card title="Course prices" desc="Toman for the Persian storefront, USD for English. 'Free' stores an explicit null.">
+      <ul className="divide-y divide-border">
+        {items.map((it) => {
+          const isFree = it.price === null;
+          const unset = it.price === undefined;
+          const fa = it.price?.fa ?? 0;
+          const en = it.price?.en ?? 0;
+          return (
+            <li key={it.id} className="flex flex-col gap-3 py-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm">{t(it.title, "en")}</p>
+                <p className="text-caption text-muted">{it.type}</p>
+              </div>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex items-center gap-2 pb-2 text-caption">
+                  <input
+                    type="checkbox"
+                    checked={isFree}
+                    onChange={(e) => set(it.id, { price: e.target.checked ? null : { fa: fa || 0, en: en || 0 } })}
+                  />
+                  Free
+                </label>
+                <Field label="Toman">
+                  <Input
+                    type="number"
+                    min={0}
+                    dir="ltr"
+                    disabled={isFree}
+                    value={isFree ? "" : fa}
+                    placeholder={unset ? "not set" : undefined}
+                    onChange={(e) => set(it.id, { price: { fa: Number(e.target.value) || 0, en } })}
+                  />
+                </Field>
+                <Field label="USD">
+                  <Input
+                    type="number"
+                    min={0}
+                    dir="ltr"
+                    disabled={isFree}
+                    value={isFree ? "" : en}
+                    placeholder={unset ? "not set" : undefined}
+                    onChange={(e) => set(it.id, { price: { fa, en: Number(e.target.value) || 0 } })}
+                  />
+                </Field>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
+/* ---------------- Curriculum ---------------- */
+/**
+ * Chapters + lessons for a course. Items with no chapters simply show no curriculum section on
+ * the detail page, so an empty editor is a valid state.
+ */
+function CurriculumEditor({ items, onChange }: { items: EducationItem[]; onChange: (e: EducationItem[]) => void }) {
+  const [selected, setSelected] = useState(items[0]?.id ?? "");
+  const item = items.find((i) => i.id === selected) ?? items[0];
+  const chapters = item?.chapters ?? [];
+
+  if (!item) return null;
+
+  const setChapters = (next: Chapter[]) => onChange(items.map((i) => (i.id === item.id ? { ...i, chapters: next } : i)));
+  const patchChapter = (id: string, p: Partial<Chapter>) => setChapters(chapters.map((c) => (c.id === id ? { ...c, ...p } : c)));
+  const patchLesson = (cid: string, lid: string, p: Partial<Lesson>) =>
+    patchChapter(cid, { lessons: chapters.find((c) => c.id === cid)!.lessons.map((l) => (l.id === lid ? { ...l, ...p } : l)) });
+
+  return (
+    <Card
+      title="Curriculum"
+      desc="Chapters and lessons shown on the course page. Leave empty to hide the section."
+      action={
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setChapters([...chapters, { id: `ch-${Date.now().toString(36)}`, title: { fa: "", en: "" }, lessons: [] }])}
+        >
+          <Plus className="h-4 w-4" />
+          Add chapter
+        </Button>
+      }
+    >
+      <div className="mb-4">
+        <Select value={item.id} onChange={(e) => setSelected(e.target.value)} aria-label="Item">
+          {items.map((i) => (
+            <option key={i.id} value={i.id}>
+              {t(i.title, "en")} ({(i.chapters ?? []).length})
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      {chapters.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">No chapters for this item.</p>
+      ) : (
+        <ul className="space-y-4">
+          {chapters.map((c) => (
+            <li key={c.id} className="rounded-lg border border-border p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Chapter (fa)">
+                  <Input value={c.title.fa} onChange={(e) => patchChapter(c.id, { title: { ...c.title, fa: e.target.value } })} />
+                </Field>
+                <Field label="Chapter (en)">
+                  <Input dir="ltr" value={c.title.en} onChange={(e) => patchChapter(c.id, { title: { ...c.title, en: e.target.value } })} />
+                </Field>
+              </div>
+
+              <ul className="mt-3 space-y-2">
+                {c.lessons.map((l) => (
+                  <li key={l.id} className="space-y-2 rounded-md border border-border/60 p-2">
+                  <div className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_7rem_6rem_2rem]">
+                    <Field label="Lesson (fa)">
+                      <Input value={l.title.fa} onChange={(e) => patchLesson(c.id, l.id, { title: { ...l.title, fa: e.target.value } })} />
+                    </Field>
+                    <Field label="Lesson (en)">
+                      <Input dir="ltr" value={l.title.en} onChange={(e) => patchLesson(c.id, l.id, { title: { ...l.title, en: e.target.value } })} />
+                    </Field>
+                    <Field label="Minutes">
+                      <Input type="number" min={1} dir="ltr" value={l.durationMin} onChange={(e) => patchLesson(c.id, l.id, { durationMin: Number(e.target.value) || 1 })} />
+                    </Field>
+                    <label className="flex items-center gap-2 pb-2.5 text-caption">
+                      <input type="checkbox" checked={Boolean(l.isFree)} onChange={(e) => patchLesson(c.id, l.id, { isFree: e.target.checked })} />
+                      Free
+                    </label>
+                    <IconBtn label="remove lesson" onClick={() => patchChapter(c.id, { lessons: c.lessons.filter((x) => x.id !== l.id) })}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </IconBtn>
+                  </div>
+                  <Field label="Media URL" hint="mp4/webm, or a link from your CDN. Empty = the player reports no media attached.">
+                    <Input
+                      dir="ltr"
+                      value={l.videoUrl ?? ""}
+                      placeholder="https://cdn.example.com/lesson-01.mp4"
+                      onChange={(e) => patchLesson(c.id, l.id, { videoUrl: e.target.value.trim() || undefined })}
+                    />
+                  </Field>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-3 flex items-center justify-between">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => patchChapter(c.id, { lessons: [...c.lessons, { id: `ls-${Date.now().toString(36)}`, title: { fa: "", en: "" }, durationMin: 10 }] })}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add lesson
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setChapters(chapters.filter((x) => x.id !== c.id))}>
+                  <Trash2 className="h-4 w-4" />
+                  Remove chapter
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }

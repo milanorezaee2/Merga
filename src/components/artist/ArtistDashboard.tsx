@@ -5,6 +5,9 @@ import Image from "next/image";
 import {
   BarChart3,
   ExternalLink,
+  GraduationCap,
+  Layers,
+  UserCircle2,
   Loader2,
   PackagePlus,
   Pencil,
@@ -20,9 +23,11 @@ import { Badge } from "@/components/ui/Badge";
 import { ErrorState, EmptyState } from "@/components/ui/States";
 import { SESSION_FETCH } from "@/lib/http";
 import { href, formatPrice } from "@/lib/utils";
+import { ProfilePanel } from "@/components/artist/ProfilePanel";
+import { SubmissionsPanel } from "@/components/artist/SubmissionsPanel";
 import type { Colorway, Pattern, Product } from "@/lib/types";
 
-type Tab = "patterns" | "products" | "stats";
+type Tab = "profile" | "patterns" | "products" | "works" | "courses" | "stats";
 
 interface ArtistData {
   patterns: Pattern[];
@@ -40,7 +45,7 @@ export function ArtistDashboard() {
   const fa = locale === "fa";
 
   const [data, setData] = useState<ArtistData | null>(null);
-  const [tab, setTab] = useState<Tab>("patterns");
+  const [tab, setTab] = useState<Tab>("profile");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("idle");
@@ -88,8 +93,11 @@ export function ArtistDashboard() {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "profile", label: fa ? "پروفایل من" : "My profile", icon: <UserCircle2 className="h-4 w-4" /> },
     { id: "patterns", label: fa ? `الگوها (${data?.patterns.length ?? 0})` : `Patterns (${data?.patterns.length ?? 0})`, icon: <BarChart3 className="h-4 w-4" /> },
     { id: "products", label: fa ? `محصولات (${data?.products.length ?? 0})` : `Products (${data?.products.length ?? 0})`, icon: <PackagePlus className="h-4 w-4" /> },
+    { id: "works", label: fa ? "نمونه‌کارها" : "Portfolio", icon: <Layers className="h-4 w-4" /> },
+    { id: "courses", label: fa ? "دوره‌ها" : "Courses", icon: <GraduationCap className="h-4 w-4" /> },
     { id: "stats", label: fa ? "آمار" : "Stats", icon: <TrendingUp className="h-4 w-4" /> },
   ];
 
@@ -158,6 +166,9 @@ export function ArtistDashboard() {
             onDelete={(id) => deleteItem(id, "product")}
           />
         )}
+        {tab === "works" && <SubmissionsPanel kind="portfolio" fa={fa} />}
+        {tab === "courses" && <SubmissionsPanel kind="education" fa={fa} />}
+        {tab === "profile" && <ProfilePanel fa={fa} locale={locale} />}
         {tab === "stats" && <StatsPanel data={data} fa={fa} locale={locale} />}
       </div>
 
@@ -203,7 +214,13 @@ function ItemGrid({
   }
 
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="space-y-4">
+      <p className="rounded-lg border border-border bg-background-secondary/40 px-4 py-3 text-caption text-foreground-secondary">
+        {fa
+          ? "هر الگو و محصولی که ثبت یا ویرایش کنید تا تأیید مدیر در سایت عمومی نمایش داده نمی‌شود."
+          : "Every pattern and product you add or edit stays hidden from the public site until an admin approves it."}
+      </p>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => {
         const image = "image" in item ? item.image : (("colors" in item && item.colors[0]?.image) || "/images/collections/s01.jpg");
         const title = typeof item.title === "object" ? (locale === "fa" ? item.title.fa : item.title.en) : item.title;
@@ -217,6 +234,13 @@ function ItemGrid({
               {item.isNew && (
                 <span className="absolute left-2 top-2">
                   <Badge tone="accent">{fa ? "جدید" : "New"}</Badge>
+                </span>
+              )}
+              {item.status && item.status !== "approved" && (
+                <span className="absolute right-2 top-2">
+                  <Badge tone={item.status === "pending" ? "warning" : "error"}>
+                    {item.status === "pending" ? (fa ? "در انتظار بررسی" : "Pending review") : fa ? "ردشده" : "Rejected"}
+                  </Badge>
                 </span>
               )}
             </div>
@@ -268,7 +292,8 @@ function ItemGrid({
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </div>
   );
 }
 

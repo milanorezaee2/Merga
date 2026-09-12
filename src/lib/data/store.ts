@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_noStore } from "next/cache";
 import { promises as fs } from "fs";
 import path from "path";
 import { seedContent } from "./seed";
@@ -74,6 +75,16 @@ export function storeBackendName(): "redis" | "file" {
 
 /* ---------- public API ---------- */
 export async function getContent(): Promise<SiteContent> {
+  /**
+   * Content is admin-managed at runtime, so every page that reads it must render on demand —
+   * that is what makes a save (or an artist approval) live without a redeploy, and what turns
+   * `notFound()` into a real 404 instead of a cached shell.
+   *
+   * The Redis backend already opted in by fetching with `cache: "no-store"`; the file backend
+   * reads with `fs`, which does not, so pages silently prerendered at build time. Declaring it
+   * here keeps both backends behaving the same way.
+   */
+  unstable_noStore();
   try {
     const raw = await backend().read();
     if (!raw) return seedContent;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Clock, Layers, Signal } from "lucide-react";
+import { CalendarDays, Clock, Layers, Signal } from "lucide-react";
 import { EducationCard } from "@/components/cards/EducationCard";
 import { PatternCard } from "@/components/cards/PatternCard";
 import { ProductCard } from "@/components/cards/ProductCard";
@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Reveal } from "@/components/ui/Reveal";
 import { enrichEducation, enrichPattern, enrichProduct, getSite } from "@/lib/data/queries";
+import { getSession } from "@/lib/auth";
+import { isEnrolled } from "@/lib/data/enrollments";
+import { Curriculum } from "@/components/academy/Curriculum";
 import { dictionaries } from "@/lib/i18n/dictionary";
 import { LOCALES, type Locale } from "@/lib/i18n/types";
 import { faNum, formatDuration, href, t } from "@/lib/utils";
@@ -38,6 +41,9 @@ export default async function EducationDetail({ params }: Props) {
   const e = enrichEducation(site, raw);
   const related = site.education.filter((x) => x.id !== e.id && (x.categoryId === e.categoryId || x.authorId === e.authorId)).slice(0, 3).map((x) => enrichEducation(site, x));
   const paragraphs = t(e.body, locale).split(/\n\n+/);
+  /** Real entitlement: read from the signed-in session, not from client state. */
+  const session = await getSession();
+  const enrolled = session ? await isEnrolled(session.id, e.id) : false;
 
   const breadcrumb = [
     { label: d.nav.home, href: href(locale, "/") },
@@ -76,16 +82,19 @@ export default async function EducationDetail({ params }: Props) {
           </div>
           <aside className="lg:col-span-4">
             <div className="rounded-xl border border-border p-5 lg:sticky lg:top-[calc(var(--header-h-compact)+1.5rem)]">
-              <p className="text-label text-muted">{d.common.progress}</p>
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-background-secondary"><div className="h-full w-[12%] bg-accent" /></div>
-              <p className="mt-2 text-caption text-foreground-secondary tabular">{locale === "fa" ? "۱۲٪ تکمیل شده" : "12% complete"}</p>
-              {e.lessons > 1 && (
-                <ol className="mt-6 space-y-2 text-sm">
-                  {Array.from({ length: Math.min(e.lessons, 6) }).map((_, i) => (
-                    <li key={i} className="flex items-center gap-3 rounded-md border border-border px-3 py-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-background-secondary text-caption tabular">{locale === "fa" ? faNum(i + 1) : i + 1}</span><span className="truncate text-foreground-secondary">{locale === "fa" ? `درس ${faNum(i + 1)}` : `Lesson ${i + 1}`}</span></li>
-                  ))}
-                </ol>
-              )}
+              {/**
+                * Real facts only. This used to render a hardcoded "12% complete" bar for every
+                * visitor and a list of invented lesson titles ("Lesson 1…6") — there is no progress
+                * tracking and the data model has no per-lesson titles, so both are gone. A
+                * curriculum belongs here once `chapters` exists on the record.
+                */}
+              <p className="text-label text-muted">{d.common.atAGlance}</p>
+              <dl className="mt-3 space-y-2.5 text-sm">
+                <Fact icon={<Signal className="h-3.5 w-3.5" />} k={d.common.difficulty} v={d.common[e.difficulty]} />
+                <Fact icon={<Clock className="h-3.5 w-3.5" />} k={d.common.duration} v={formatDuration(e.durationMin, locale, d.common)} />
+                {e.lessons > 1 && <Fact icon={<Layers className="h-3.5 w-3.5" />} k={d.common.lessons} v={String(e.lessons)} />}
+                <Fact icon={<CalendarDays className="h-3.5 w-3.5" />} k={d.common.published} v={new Date(e.publishedAt).toLocaleDateString(locale === "fa" ? "fa-IR" : "en-GB", { year: "numeric", month: "long" })} />
+              </dl>
               {e.author && (
                 <Link href={href(locale, `/artists/${e.author.slug}`)} className="mt-6 flex items-center gap-3 border-t border-border pt-5 group">
                   <span className="relative h-12 w-12 overflow-hidden rounded-full"><Image src={e.author.avatar} alt="" fill sizes="48px" className="object-cover" /></span>
@@ -96,6 +105,24 @@ export default async function EducationDetail({ params }: Props) {
           </aside>
         </div>
       </section>
+
+      {/**
+        * Curriculum — rendered from real `chapters` data. Native <details> keeps it server-rendered
+        * and keyboard-accessible without a client component.
+        */}
+      {e.chapters && e.chapters.length > 0 && (
+        <section className="container-x section-y">
+          <SectionHeader eyebrow={d.nav.education} title={d.common.curriculum} />
+          <Curriculum
+            chapters={e.chapters}
+            itemId={e.id}
+            itemIsFree={e.price === null}
+            itemIsPaid={Boolean(e.price)}
+            initiallyEnrolled={enrolled}
+            locale={locale}
+          />
+        </section>
+      )}
 
       {e.patterns.length > 0 && (
         <section className="bg-background-secondary"><div className="container-x section-y">
@@ -116,5 +143,18 @@ export default async function EducationDetail({ params }: Props) {
         </section>
       )}
     </article>
+  );
+}
+
+/** One label/value row in the "at a glance" panel. */
+function Fact({ icon, k, v }: { icon: React.ReactNode; k: string; v: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-border pb-2.5 last:border-0 last:pb-0">
+      <dt className="inline-flex items-center gap-1.5 text-caption text-muted">
+        {icon}
+        {k}
+      </dt>
+      <dd className="text-end font-medium tabular">{v}</dd>
+    </div>
   );
 }
