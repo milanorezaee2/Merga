@@ -20,6 +20,17 @@ export interface Space {
   order: number;
 }
 
+/**
+ * Moderation state of an artist profile.
+ *  - "pending"  → self-registered, waiting for an admin decision; hidden from every public page
+ *  - "approved" → live on the site
+ *  - "rejected" → declined by an admin; hidden from every public page
+ *
+ * The field is optional on purpose: content saved before moderation existed has no `status`,
+ * and `artistStatus()` treats a missing value as "approved" so legacy records keep working.
+ */
+export type ArtistStatus = "pending" | "approved" | "rejected";
+
 export interface Artist {
   id: ID;
   slug: string;
@@ -34,6 +45,16 @@ export interface Artist {
   followers: number;
   rating: number;
   reviewsCount: number;
+  /** Account that owns this profile — set when the artist registers themselves. */
+  userId?: ID | null;
+  /** Missing = legacy/seed record, treated as "approved" (see `artistStatus()`). */
+  status?: ArtistStatus;
+  /** Contact details captured at signup. Admin-only: never rendered on public pages. */
+  email?: string;
+  phone?: string;
+  joinedAt?: string;
+  /** Admin note about the moderation decision. Admin-only. */
+  reviewNote?: string;
 }
 
 export interface PatternSpec {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   BarChart3,
   ExternalLink,
+  UserCircle2,
   Loader2,
   PackagePlus,
   Pencil,
@@ -20,9 +21,10 @@ import { Badge } from "@/components/ui/Badge";
 import { ErrorState, EmptyState } from "@/components/ui/States";
 import { SESSION_FETCH } from "@/lib/http";
 import { href, formatPrice } from "@/lib/utils";
+import { ProfilePanel } from "@/components/artist/ProfilePanel";
 import type { Colorway, Pattern, Product } from "@/lib/types";
 
-type Tab = "patterns" | "products" | "stats";
+type Tab = "profile" | "patterns" | "products" | "stats";
 
 interface ArtistData {
   patterns: Pattern[];
@@ -40,7 +42,7 @@ export function ArtistDashboard() {
   const fa = locale === "fa";
 
   const [data, setData] = useState<ArtistData | null>(null);
-  const [tab, setTab] = useState<Tab>("patterns");
+  const [tab, setTab] = useState<Tab>("profile");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("idle");
@@ -88,6 +90,7 @@ export function ArtistDashboard() {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "profile", label: fa ? "پروفایل من" : "My profile", icon: <UserCircle2 className="h-4 w-4" /> },
     { id: "patterns", label: fa ? `الگوها (${data?.patterns.length ?? 0})` : `Patterns (${data?.patterns.length ?? 0})`, icon: <BarChart3 className="h-4 w-4" /> },
     { id: "products", label: fa ? `محصولات (${data?.products.length ?? 0})` : `Products (${data?.products.length ?? 0})`, icon: <PackagePlus className="h-4 w-4" /> },
     { id: "stats", label: fa ? "آمار" : "Stats", icon: <TrendingUp className="h-4 w-4" /> },
@@ -158,6 +161,7 @@ export function ArtistDashboard() {
             onDelete={(id) => deleteItem(id, "product")}
           />
         )}
+        {tab === "profile" && <ProfilePanel fa={fa} locale={locale} />}
         {tab === "stats" && <StatsPanel data={data} fa={fa} locale={locale} />}
       </div>
 

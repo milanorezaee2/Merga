@@ -96,7 +96,14 @@ interface AuthCtx {
   /** false until the server session has been checked */
   ready: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signup: (name: string, email: string, password: string, role?: "user" | "artist") => Promise<{ ok: boolean; error?: string }>;
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    role?: "user" | "artist",
+    /** Artist-only extras captured by /creators/join — ignored for plain customers. */
+    extra?: { profession?: string; phone?: string },
+  ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 }
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -262,14 +269,14 @@ export function AppProviders({ locale, children }: { locale: Locale; children: R
           return { ok: false, error: "network" };
         }
       },
-      signup: async (name, email, password, role = "user") => {
+      signup: async (name, email, password, role = "user", extra) => {
         if (!name || !email.includes("@") || password.length < 6) return { ok: false, error: "invalid" };
         try {
           const r = await fetch("/api/auth/signup", {
             ...SESSION_FETCH,
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ name, email, password, role }),
+            body: JSON.stringify({ name, email, password, role, ...(extra ?? {}) }),
           });
           const d = (await r.json()) as { ok: boolean; user?: User; error?: string };
           if (r.ok && d.ok && d.user) {

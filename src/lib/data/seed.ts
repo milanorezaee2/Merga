@@ -55,6 +55,7 @@ export const artists: Artist[] = [
     location: L("تهران", "Tehran"),
     social: { instagram: "niloufar.rad", behance: "niloufarrad" },
     featured: true, followers: 12800, rating: 4.9, reviewsCount: 143,
+    status: "approved", // seed content is curated, so it starts live
   },
   {
     id: "artist-arman-kian", slug: "arman-kian",
@@ -65,6 +66,7 @@ export const artists: Artist[] = [
     location: L("اصفهان", "Isfahan"),
     social: { instagram: "arman.kian", website: "armankian.studio" },
     featured: true, followers: 8400, rating: 4.8, reviewsCount: 96,
+    status: "approved", // seed content is curated, so it starts live
   },
   {
     id: "artist-sara-mehr", slug: "sara-mehr",
@@ -75,6 +77,7 @@ export const artists: Artist[] = [
     location: L("شیراز", "Shiraz"),
     social: { instagram: "sara.mehr.art" },
     featured: true, followers: 15200, rating: 4.9, reviewsCount: 211,
+    status: "approved", // seed content is curated, so it starts live
   },
   {
     id: "artist-hossein-tabrizi", slug: "hossein-tabrizi",
@@ -85,6 +88,7 @@ export const artists: Artist[] = [
     location: L("تبریز", "Tabriz"),
     social: { website: "tabrizi-atelier.ir" },
     featured: true, followers: 6100, rating: 5, reviewsCount: 58,
+    status: "approved", // seed content is curated, so it starts live
   },
 ];
 

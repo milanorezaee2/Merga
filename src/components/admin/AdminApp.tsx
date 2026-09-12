@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { ErrorState, Skeleton, SuccessState } from "@/components/ui/States";
 import { Badge } from "@/components/ui/Badge";
+import { ArtistModeration } from "@/components/admin/ArtistModeration";
 import { SESSION_FETCH } from "@/lib/http";
 import { cn, href, slugify, t } from "@/lib/utils";
 import type { Banner, Category, HeroContent, HomeSectionKey, SeoMeta, SiteContent } from "@/lib/types";
 import type { Localized } from "@/lib/i18n/types";
 
-type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "portfolios" | "education" | "banners" | "seo";
+type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "requests" | "portfolios" | "education" | "banners" | "seo";
 
 const SECTION_LABELS: Record<HomeSectionKey, string> = {
   hero: "Hero", discovery: "Pattern Discovery", trending: "Trending Patterns", bestSellers: "Best Sellers", newPatterns: "New Patterns", artists: "Featured Artists", portfolios: "Featured Portfolios", styles: "Browse by Style", spaces: "Browse by Space", exclusive: "Exclusive Collection", projects: "Featured Projects", education: "Academy", b2b: "B2B", custom: "Custom Production", stories: "Artist Stories", newsletter: "Newsletter",
@@ -121,7 +122,7 @@ export function AdminApp() {
   }
 
   const nav: { id: Section; label: string }[] = [
-    { id: "home", label: "Homepage Sections" }, { id: "hero", label: "Hero" }, { id: "categories", label: "Categories / Styles" }, { id: "patterns", label: "Patterns" }, { id: "products", label: "Site Products" }, { id: "artists", label: "Artists" }, { id: "portfolios", label: "Portfolios" }, { id: "education", label: "Education" }, { id: "banners", label: "Banners" }, { id: "seo", label: "SEO Metadata" },
+    { id: "home", label: "Homepage Sections" }, { id: "hero", label: "Hero" }, { id: "categories", label: "Categories / Styles" }, { id: "patterns", label: "Patterns" }, { id: "products", label: "Site Products" }, { id: "artists", label: "Artists" }, { id: "requests", label: "Artist Requests" }, { id: "portfolios", label: "Portfolios" }, { id: "education", label: "Education" }, { id: "banners", label: "Banners" }, { id: "seo", label: "SEO Metadata" },
   ];
 
   return (
@@ -175,6 +176,7 @@ export function AdminApp() {
               {section === "patterns" && <FlagList title="Patterns" items={data.patterns} label={(p) => `${p.sku} · ${t(p.title, "en")}`} flags={["featured", "trending", "bestSeller", "isNew"]} onChange={(patterns) => update({ patterns })} viewHref={(p) => href(locale, `/patterns/${p.slug}`)} />}
               {section === "products" && <FlagList title="Products" items={data.products} label={(p) => `${p.sku} · ${t(p.title, "en")}${!p.artistId ? " · SITE" : ""}`} flags={["featured", "bestSeller", "isNew"]} onChange={(products) => update({ products })} viewHref={(p) => href(locale, `/shop/${p.slug}`)} orderable />}
               {section === "artists" && <FlagList title="Artists" items={data.artists} label={(a) => `${t(a.name, "en")} · ${t(a.profession, "en")}`} flags={["featured"]} onChange={(artists) => update({ artists })} viewHref={(a) => href(locale, `/artists/${a.slug}`)} />}
+              {section === "requests" && <ArtistModeration locale={locale} />}
               {section === "portfolios" && <FlagList title="Portfolios" items={data.portfolios} label={(p) => `${t(p.title, "en")} · ${p.year}`} flags={["featured", "isProject"]} onChange={(portfolios) => update({ portfolios })} viewHref={(p) => href(locale, `/portfolio/${p.slug}`)} />}
               {section === "education" && <FlagList title="Education" items={data.education} label={(e) => `${e.type.toUpperCase()} · ${t(e.title, "en")}`} flags={["featured", "popular"]} onChange={(education) => update({ education })} viewHref={(e) => href(locale, `/academy/${e.slug}`)} />}
               {section === "banners" && <BannersEditor banners={data.banners} onChange={(banners) => update({ banners })} />}

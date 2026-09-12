@@ -35,7 +35,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-/data/*.json
+# runtime data written by the app: content overrides, user accounts, uploaded images
+/data/
 
 # local agent/tooling artifacts & logs (never commit these)
 /dev.log

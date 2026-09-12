@@ -45,6 +45,8 @@ export function CreatorSignupForm({ options }: CreatorSignupFormProps) {
     const email = String(fd.get("email") || "");
     const password = String(fd.get("password") || "");
     const confirm = String(fd.get("confirm") || "");
+    const profession = String(fd.get("type") || "").trim();
+    const phone = String(fd.get("phone") || "").trim();
 
     if (password !== confirm) {
       setState("idle");
@@ -58,7 +60,7 @@ export function CreatorSignupForm({ options }: CreatorSignupFormProps) {
       return;
     }
 
-    const r = await signup(name, email, password, "artist");
+    const r = await signup(name, email, password, "artist", { profession, phone });
     if (!r.ok) {
       setState("error");
       const errorMap: Record<string, string> = {
@@ -74,7 +76,7 @@ export function CreatorSignupForm({ options }: CreatorSignupFormProps) {
     setState("ok");
     setTimeout(() => {
       router.push(href(locale, "/artist"));
-    }, 1500);
+    }, 2200);
   };
 
   if (state === "ok") {
@@ -82,8 +84,8 @@ export function CreatorSignupForm({ options }: CreatorSignupFormProps) {
       <SuccessState
         message={
           fa
-            ? "ثبت‌نام شما با موفقیت انجام شد! در حال انتقال به داشبورد…"
-            : "Registration successful! Redirecting to your dashboard…"
+            ? "ثبت‌نام انجام شد! پروفایل شما پس از تأیید مدیر در سایت نمایش داده می‌شود — در حال انتقال به داشبورد…"
+            : "Registration received! Your profile goes live once an admin approves it — taking you to your dashboard…"
         }
       />
     );
@@ -126,6 +128,11 @@ export function CreatorSignupForm({ options }: CreatorSignupFormProps) {
           {fa ? "ثبت‌نام به عنوان هنرمند" : "Register as an artist"}
         </Button>
         <p className="mt-3 text-caption text-foreground-secondary">
+          {fa
+            ? "پس از ثبت‌نام، پروفایل شما موقتاً مخفی است و پس از بررسی و تأیید مدیر در سایت نمایش داده می‌شود."
+            : "After signing up your profile stays private until an admin reviews and approves it."}
+        </p>
+        <p className="mt-2 text-caption text-foreground-secondary">
           {fa ? "قبلاً ثبت نام کرده‌اید؟" : "Already have an account?"}{" "}
           <a href={href(locale, "/login")} className="font-medium text-foreground underline-offset-4 hover:underline">
             {fa ? "ورود" : "Sign in"}

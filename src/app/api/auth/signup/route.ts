@@ -1,17 +1,28 @@
 import { NextResponse } from "next/server";
-import { createUser, toPublicUser } from "@/lib/data/users";
+import { createUser, findUserByEmail, toPublicUser } from "@/lib/data/users";
+import { createArtistDraft, linkArtistAccount } from "@/lib/data/artists";
 import { createSessionToken, publicUserToSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { withNoStore } from "@/lib/http";
 import { clientIp, recordFailure, tooManyAttempts } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Public sign-up.
+ *
+ * role "user"  → a plain customer account.
+ * role "artist"→ a customer account *plus* a pending artist profile. The profile is not visible
+ * anywhere on the public site until an admin approves it (see src/lib/data/artists.ts).
+ */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
     name?: string;
     email?: string;
     password?: string;
     role?: string;
+    /** Artist-only extras captured by /creators/join. */
+    profession?: string;
+    phone?: string;
   } | null;
 
   if (!body?.name || !body?.email || !body?.password) {
@@ -29,13 +40,35 @@ export async function POST(req: Request) {
 
   // Validate role — only "user" and "artist" allowed via public API
   const role = body.role === "artist" ? "artist" : "user";
+  const email = body.email.trim();
 
+  // Fail before writing anything: a duplicate e-mail must not leave an orphan profile behind.
+  if (await findUserByEmail(email)) {
+    recordFailure(key);
+    return NextResponse.json({ ok: false, error: "email_taken" }, withNoStore({ status: 409 }));
+  }
+
+  let artistId: string | undefined;
   try {
-    const stored = await createUser(body.name, body.email, body.password, role);
+    if (role === "artist") {
+      const artist = await createArtistDraft({
+        name: body.name,
+        email,
+        phone: body.phone,
+        profession: body.profession,
+      });
+      artistId = artist.id;
+    }
+
+    const stored = await createUser(body.name, email, body.password, role, artistId);
     const pub = toPublicUser(stored);
     const session = publicUserToSession(pub);
     const res = NextResponse.json({ ok: true, user: session }, withNoStore());
     res.cookies.set(SESSION_COOKIE, await createSessionToken(session), sessionCookieOptions());
+
+    // Link the account back onto the profile so the moderation queue can show who owns it.
+    if (artistId) await linkArtistAccount(artistId, stored.id);
+
     return res;
   } catch (e) {
     if (e instanceof Error && e.message === "email_taken") {

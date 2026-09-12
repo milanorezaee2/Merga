@@ -149,6 +149,12 @@ to `data/content.json` — keep that directory on a persistent volume.
 
 ## Performance notes
 
+- **No route-level `loading.tsx`.** A `loading.tsx` in `app/[locale]/` wraps every page in a Suspense
+  boundary, so the 200 shell is streamed before the page renders — and a page that calls `notFound()`
+  (every `[slug]` route: unknown slug, or a pending/rejected artist) then answers **200 with the 404
+  UI** instead of a real 404. Removing it restores correct status codes; the router still keeps the
+  previous page visible during navigation and `anim-page` covers the transition. Do not re-add it
+  without re-checking `curl -o /dev/null -w '%{http_code}' /fa/shop/<unknown-slug>`.
 - All page payloads render on demand; images use `next/image` with explicit `sizes`.
 - The global search palette does **not** receive the full catalog via props anymore — it lazily
   fetches `/api/search-index` (public, cacheable 5 min, locale-agnostic) on first use and warms it
