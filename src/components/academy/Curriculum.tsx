@@ -18,12 +18,15 @@ export function Curriculum({
   chapters,
   itemId,
   itemIsFree,
+  itemIsPaid,
   initiallyEnrolled,
   locale,
 }: {
   chapters: Chapter[];
   itemId: string;
   itemIsFree: boolean;
+  /** The item has a price, so access goes through an order the admin settles. */
+  itemIsPaid?: boolean;
   initiallyEnrolled: boolean;
   locale: "fa" | "en";
 }) {
@@ -68,6 +71,7 @@ export function Curriculum({
                       itemId={itemId}
                       enrolled={enrolled}
                       isFree={itemIsFree}
+                      isPaid={itemIsPaid}
                       locale={locale}
                       onEnrolled={() => setEnrolled(true)}
                     />

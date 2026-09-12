@@ -117,6 +117,7 @@ export default async function EducationDetail({ params }: Props) {
             chapters={e.chapters}
             itemId={e.id}
             itemIsFree={e.price === null}
+            itemIsPaid={Boolean(e.price)}
             initiallyEnrolled={enrolled}
             locale={locale}
           />

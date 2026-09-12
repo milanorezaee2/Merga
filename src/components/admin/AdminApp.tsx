@@ -11,12 +11,13 @@ import { ErrorState, Skeleton, SuccessState } from "@/components/ui/States";
 import { Badge } from "@/components/ui/Badge";
 import { ArtistModeration } from "@/components/admin/ArtistModeration";
 import { ContentReview } from "@/components/admin/ContentReview";
+import { OrderDesk } from "@/components/admin/OrderDesk";
 import { SESSION_FETCH } from "@/lib/http";
 import { cn, href, slugify, t } from "@/lib/utils";
 import type { Artist, ArtistReview, Banner, Category, Chapter, EducationItem, HeroContent, HomeSectionKey, Lesson, SeoMeta, SiteContent } from "@/lib/types";
 import type { Localized } from "@/lib/i18n/types";
 
-type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "requests" | "review" | "portfolios" | "education" | "banners" | "seo";
+type Section = "home" | "hero" | "categories" | "patterns" | "products" | "artists" | "requests" | "review" | "orders" | "portfolios" | "education" | "banners" | "seo";
 
 const SECTION_LABELS: Record<HomeSectionKey, string> = {
   hero: "Hero", discovery: "Pattern Discovery", trending: "Trending Patterns", bestSellers: "Best Sellers", newPatterns: "New Patterns", artists: "Featured Artists", portfolios: "Featured Portfolios", styles: "Browse by Style", spaces: "Browse by Space", exclusive: "Exclusive Collection", projects: "Featured Projects", education: "Academy", b2b: "B2B", custom: "Custom Production", stories: "Artist Stories", newsletter: "Newsletter",
@@ -123,7 +124,7 @@ export function AdminApp() {
   }
 
   const nav: { id: Section; label: string }[] = [
-    { id: "home", label: "Homepage Sections" }, { id: "hero", label: "Hero" }, { id: "categories", label: "Categories / Styles" }, { id: "patterns", label: "Patterns" }, { id: "products", label: "Site Products" }, { id: "artists", label: "Artists" }, { id: "requests", label: "Artist Requests" }, { id: "review", label: "Content Review" }, { id: "portfolios", label: "Portfolios" }, { id: "education", label: "Education" }, { id: "banners", label: "Banners" }, { id: "seo", label: "SEO Metadata" },
+    { id: "home", label: "Homepage Sections" }, { id: "hero", label: "Hero" }, { id: "categories", label: "Categories / Styles" }, { id: "patterns", label: "Patterns" }, { id: "products", label: "Site Products" }, { id: "artists", label: "Artists" }, { id: "requests", label: "Artist Requests" }, { id: "review", label: "Content Review" }, { id: "orders", label: "Orders" }, { id: "portfolios", label: "Portfolios" }, { id: "education", label: "Education" }, { id: "banners", label: "Banners" }, { id: "seo", label: "SEO Metadata" },
   ];
 
   return (
@@ -184,6 +185,7 @@ export function AdminApp() {
               )}
               {section === "requests" && <ArtistModeration locale={locale} />}
               {section === "review" && <ContentReview locale={locale} />}
+              {section === "orders" && <OrderDesk locale={locale} />}
               {section === "portfolios" && <FlagList title="Portfolios" items={data.portfolios} label={(p) => `${t(p.title, "en")} · ${p.year}`} flags={["featured", "isProject"]} onChange={(portfolios) => update({ portfolios })} viewHref={(p) => href(locale, `/portfolio/${p.slug}`)} />}
               {section === "education" && (
                 <div className="space-y-6">

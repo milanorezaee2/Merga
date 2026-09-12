@@ -19,6 +19,7 @@ export function LessonPlayer({
   itemId,
   enrolled,
   isFree,
+  isPaid,
   locale,
   onEnrolled,
 }: {
@@ -27,6 +28,8 @@ export function LessonPlayer({
   enrolled: boolean;
   /** The whole item is free, so every lesson is open. */
   isFree: boolean;
+  /** The item has a price: access goes through an order the admin settles, not a self-enrol. */
+  isPaid?: boolean;
   locale: "fa" | "en";
   onEnrolled: () => void;
 }) {
@@ -49,9 +52,32 @@ export function LessonPlayer({
       });
       const d = (await r.json()) as { ok: boolean; error?: string };
       if (r.status === 401) setError(fa ? "برای دسترسی باید وارد شوی." : "Sign in to access this lesson.");
-      else if (r.status === 402) setError(fa ? "این دوره رایگان نیست؛ پرداخت هنوز متصل نشده است." : "This course is not free; checkout is not wired up yet.");
+      else if (r.status === 402) setError(fa ? "این دوره رایگان نیست؛ ثبت سفارش کن تا پس از تأیید پرداخت باز شود." : "This course is paid — register an order and it unlocks once payment is confirmed.");
       else if (!r.ok || !d.ok) setError(fa ? "ثبت‌نام ناموفق بود." : "Enrolment failed.");
       else onEnrolled();
+    } catch {
+      setError(fa ? "خطای شبکه." : "Network error.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Paid course: register an order. It grants nothing until an admin marks it paid. */
+  const orderNow = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/academy/order", {
+        ...SESSION_FETCH,
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ itemId }),
+      });
+      const d = (await r.json()) as { ok: boolean; error?: string };
+      if (r.status === 401) setError(fa ? "برای ثبت سفارش باید وارد شوی." : "Sign in to register an order.");
+      else if (r.status === 409) setError(fa ? "سفارش یا ثبت‌نام شما از قبل ثبت شده است." : "You already have an order or enrolment for this course.");
+      else if (!r.ok || !d.ok) setError(fa ? "ثبت سفارش ناموفق بود." : "Could not register the order.");
+      else setError(fa ? "سفارش ثبت شد. پس از تأیید پرداخت، درس‌ها باز می‌شوند." : "Order registered. The lessons unlock once payment is confirmed.");
     } catch {
       setError(fa ? "خطای شبکه." : "Network error.");
     } finally {
@@ -67,11 +93,17 @@ export function LessonPlayer({
           {fa ? "این درس قفل است" : "This lesson is locked"}
         </p>
         <p className="mt-1 text-caption text-foreground-secondary">
-          {fa ? "با ثبت‌نام در این دوره باز می‌شود." : "Unlocks when you enrol in this course."}
+          {isPaid
+            ? fa
+              ? "این دوره پولی است. سفارش را ثبت کن و مبلغ را واریز کن؛ به محض تأیید مدیر، درس‌ها باز می‌شوند."
+              : "This is a paid course. Register an order and transfer the amount; the lessons unlock as soon as an admin confirms payment."
+            : fa
+              ? "با ثبت‌نام در این دوره باز می‌شود."
+              : "Unlocks when you enrol in this course."}
         </p>
-        <Button size="sm" className="mt-3" onClick={() => void enrollNow()} disabled={busy}>
+        <Button size="sm" className="mt-3" onClick={() => void (isPaid ? orderNow() : enrollNow())} disabled={busy}>
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          {fa ? "ثبت‌نام در دوره" : "Enrol in this course"}
+          {isPaid ? (fa ? "ثبت سفارش" : "Register order") : fa ? "ثبت‌نام در دوره" : "Enrol in this course"}
         </Button>
         {error && <p className="mt-2 text-caption text-error">{error}</p>}
       </div>
