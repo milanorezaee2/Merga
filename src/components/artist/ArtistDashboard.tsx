@@ -5,6 +5,8 @@ import Image from "next/image";
 import {
   BarChart3,
   ExternalLink,
+  GraduationCap,
+  Layers,
   UserCircle2,
   Loader2,
   PackagePlus,
@@ -22,9 +24,10 @@ import { ErrorState, EmptyState } from "@/components/ui/States";
 import { SESSION_FETCH } from "@/lib/http";
 import { href, formatPrice } from "@/lib/utils";
 import { ProfilePanel } from "@/components/artist/ProfilePanel";
+import { SubmissionsPanel } from "@/components/artist/SubmissionsPanel";
 import type { Colorway, Pattern, Product } from "@/lib/types";
 
-type Tab = "profile" | "patterns" | "products" | "stats";
+type Tab = "profile" | "patterns" | "products" | "works" | "courses" | "stats";
 
 interface ArtistData {
   patterns: Pattern[];
@@ -93,6 +96,8 @@ export function ArtistDashboard() {
     { id: "profile", label: fa ? "پروفایل من" : "My profile", icon: <UserCircle2 className="h-4 w-4" /> },
     { id: "patterns", label: fa ? `الگوها (${data?.patterns.length ?? 0})` : `Patterns (${data?.patterns.length ?? 0})`, icon: <BarChart3 className="h-4 w-4" /> },
     { id: "products", label: fa ? `محصولات (${data?.products.length ?? 0})` : `Products (${data?.products.length ?? 0})`, icon: <PackagePlus className="h-4 w-4" /> },
+    { id: "works", label: fa ? "نمونه‌کارها" : "Portfolio", icon: <Layers className="h-4 w-4" /> },
+    { id: "courses", label: fa ? "دوره‌ها" : "Courses", icon: <GraduationCap className="h-4 w-4" /> },
     { id: "stats", label: fa ? "آمار" : "Stats", icon: <TrendingUp className="h-4 w-4" /> },
   ];
 
@@ -161,6 +166,8 @@ export function ArtistDashboard() {
             onDelete={(id) => deleteItem(id, "product")}
           />
         )}
+        {tab === "works" && <SubmissionsPanel kind="portfolio" fa={fa} />}
+        {tab === "courses" && <SubmissionsPanel kind="education" fa={fa} />}
         {tab === "profile" && <ProfilePanel fa={fa} locale={locale} />}
         {tab === "stats" && <StatsPanel data={data} fa={fa} locale={locale} />}
       </div>

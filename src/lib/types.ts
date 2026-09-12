@@ -40,7 +40,10 @@ export interface ArtistReview {
  * The field is optional on purpose: content saved before moderation existed has no `status`,
  * and `artistStatus()` treats a missing value as "approved" so legacy records keep working.
  */
-export type ArtistStatus = "pending" | "approved" | "rejected";
+/** Approval state for anything an artist submits. Absent means "approved" (atelier-owned content). */
+export type ContentStatus = "pending" | "approved" | "rejected";
+
+export type ArtistStatus = ContentStatus;
 
 export interface Artist {
   id: ID;
@@ -121,6 +124,10 @@ export interface Pattern {
   isNew: boolean;
   createdAt: string;
   likes: number;
+  /** Artist-submitted pattern: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 export interface ColorOption {
@@ -155,6 +162,10 @@ export interface Product {
   bestSeller: boolean;
   isNew: boolean;
   order: number;
+  /** Artist-submitted product: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 export interface PortfolioBlock {
@@ -185,6 +196,10 @@ export interface Portfolio {
   featured: boolean;
   isProject: boolean;
   size: "hero" | "tall" | "wide" | "square";
+  /** Artist-submitted work: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 /** One lesson inside a chapter. `isFree` lessons are unlocked for everyone. */
@@ -232,6 +247,10 @@ export interface EducationItem {
   price?: { fa: number; en: number } | null;
   /** Real curriculum. Optional — the detail page renders the section only when present. */
   chapters?: Chapter[];
+  /** Artist-submitted lesson/course: hidden from the public site until an admin approves it. */
+  status?: ContentStatus;
+  submittedAt?: string;
+  reviewNote?: string;
 }
 
 export interface Story {

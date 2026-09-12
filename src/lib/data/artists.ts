@@ -3,7 +3,9 @@ import crypto from "crypto";
 import { getContent, saveContent } from "./store";
 import { getAllUsers, type StoredUser } from "./users";
 import { slugify } from "../utils";
-import type { Artist, ArtistStatus, SiteContent } from "../types";
+import type { Artist, ArtistStatus, ContentStatus, SiteContent } from "../types";
+import { isContentLive } from "./moderation";
+import { withContentLock } from "./lock";
 
 /**
  * Artist profiles with admin moderation.
@@ -47,50 +49,35 @@ export interface ArtistWithAccount extends Artist {
   counts: { patterns: number; products: number; portfolios: number; education: number };
 }
 
-/* ------------------------------------------------------------------ */
-/* In-process write serialisation                                      */
-/* ------------------------------------------------------------------ */
-
-/**
- * The content store is a single JSON document, so two concurrent read-modify-write cycles would
- * otherwise clobber each other (last write wins). Chaining the writes through one promise keeps
- * them ordered inside a single Node process. This is *not* a cross-instance lock: with several
- * serverless instances, or once more than one person writes at a time, move the store to a real
- * database (or add optimistic versioning) — see README → Storage.
- */
-let writeChain: Promise<unknown> = Promise.resolve();
-
-export function withContentLock<T>(fn: () => Promise<T>): Promise<T> {
-  const run = writeChain.then(fn, fn);
-  writeChain = run.catch(() => undefined);
-  return run;
-}
+/* Re-exported: the lock lives in ./lock so moderation helpers can share it without a cycle. */
+export { withContentLock };
 
 /* ------------------------------------------------------------------ */
 /* Public-site filtering                                               */
 /* ------------------------------------------------------------------ */
 
 /**
- * Strip everything that belongs to a non-approved artist. Used by `getSite()` only —
- * admin endpoints keep seeing the full document.
+ * Strip everything a visitor must not see: content owned by a non-approved artist, and any
+ * submission still waiting for (or refused) approval. Used by `getSite()` only — admin and
+ * artist endpoints keep seeing the full document.
  *
  * Content with no owner (`artistId == null`) is the atelier's own and is always kept.
  */
 export function filterLiveContent(content: SiteContent): SiteContent {
-  if (content.artists.every(isArtistLive)) return content;
-
   const artists = content.artists.filter(isArtistLive);
   const live = new Set(artists.map((a) => a.id));
-  const owned = (ownerId: string | null | undefined) => !ownerId || live.has(ownerId);
+  /** Kept when it has no owner (the atelier's own) and its owner is approved, and it is not pending. */
+  const show = (ownerId: string | null | undefined, item: { status?: ContentStatus }) =>
+    (!ownerId || live.has(ownerId)) && isContentLive(item);
 
   return {
     ...content,
     artists,
-    patterns: content.patterns.filter((p) => owned(p.artistId)),
-    products: content.products.filter((p) => owned(p.artistId)),
-    portfolios: content.portfolios.filter((p) => owned(p.artistId)),
-    stories: content.stories.filter((s) => owned(s.artistId)),
-    education: content.education.filter((e) => owned(e.authorId)),
+    patterns: content.patterns.filter((p) => show(p.artistId, p)),
+    products: content.products.filter((p) => show(p.artistId, p)),
+    portfolios: content.portfolios.filter((p) => show(p.artistId, p)),
+    stories: content.stories.filter((s) => live.has(s.artistId) || !s.artistId),
+    education: content.education.filter((e) => show(e.authorId, e)),
   };
 }
 
